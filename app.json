@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "temp_expo",
-    "slug": "temp_expo",
+    "name": "StudyIA",
+    "slug": "study-ia",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,6 +19,23 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-font",
+      "expo-status-bar",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "StudyIA necesita acceso a la cámara para capturar y procesar tus apuntes de estudio.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "StudyIA accede a tu galería para importar apuntes o fotografías de clase."
+        }
+      ]
+    ]
   }
 }
