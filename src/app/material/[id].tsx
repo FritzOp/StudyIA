@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -12,15 +12,25 @@ import {
   SlidingNumber,
   TypingText,
 } from '@/components/motion';
+import { GlossaryText } from '@/components/GlossaryText';
+import { StudyGuideView } from '@/components/StudyGuide';
 import { Banner, Card, Field, Screen, SectionTitle, type IconName } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useSync } from '@/context/SyncContext';
 import { useTheme } from '@/context/ThemeContext';
 import type { Material } from '@/db/schema';
-import { useFlashcards, useMaterial, useQuizQuestions, useSubject, useAttempts } from '@/hooks/useStudyData';
+import {
+  useAttempts,
+  useFlashcards,
+  useMaterial,
+  useProfile,
+  useQuizQuestions,
+  useSubject,
+} from '@/hooks/useStudyData';
+import { activeCareers } from '@/lib/careers';
 import { confirmDeleteMaterial } from '@/lib/confirmations';
 import { percentage } from '@/lib/study';
-import { processMaterial } from '@/services/ai/pipeline';
+import { generateGuide, processMaterial } from '@/services/ai/pipeline';
 import { explainWithAi } from '@/services/ai/remoteGenerator';
 
 export default function MaterialScreen() {
@@ -43,6 +53,8 @@ function MaterialContent({ material }: { material: Material }) {
   const cards = allCards.filter((c) => c.materialId === material.id);
   const attempts = allAttempts.filter((a) => a.materialId === material.id);
   const subjectName = subject?.name ?? 'Sin materia';
+  // Los términos del glosario se resaltan en todo el apunte y se pueden tocar.
+  const terms = useMemo(() => material.guide?.glossary.map((g) => g.term) ?? [], [material.guide]);
 
   const retry = () => {
     processMaterial(material.id, { canUseCloud, subjectName }).catch(() => undefined);
@@ -116,8 +128,8 @@ function MaterialContent({ material }: { material: Material }) {
             isGuest
               ? 'Se analizó en tu teléfono con frases de tu apunte. Crea una cuenta para usar la IA.'
               : canUseCloud
-                ? 'Se analizó en tu teléfono con frases de tu apunte. Puedes mejorarlo ahora.'
-                : 'Se analizó en tu teléfono con frases de tu apunte. Podrás mejorarlo con IA al tener conexión.'
+                ? 'Se analizó en tu teléfono con frases de tu apunte. Usa la IA para mejorarlo y obtener la guía de estudio.'
+                : 'Se analizó en tu teléfono con frases de tu apunte. Al tener conexión podrás mejorarlo con IA y obtener la guía de estudio.'
           }
           action={canUseCloud ? <RetryLink label="Usar IA" onPress={retry} /> : undefined}
         />
@@ -156,9 +168,17 @@ function MaterialContent({ material }: { material: Material }) {
           <AnimatedEntrance>
             <Card style={styles.summary}>
               <SectionTitle title="Resumen" />
-              <Text selectable style={[styles.summaryText, { color: theme.textSecondary }]}>
-                {material.summary}
-              </Text>
+              <GlossaryText
+                text={material.summary ?? ''}
+                terms={terms}
+                materialId={material.id}
+                style={[styles.summaryText, { color: theme.textSecondary }]}
+              />
+              {terms.length > 0 ? (
+                <Text style={[styles.hint, { color: theme.textMuted }]}>
+                  Toca una palabra subrayada para ver su significado.
+                </Text>
+              ) : null}
             </Card>
           </AnimatedEntrance>
 
@@ -166,13 +186,29 @@ function MaterialContent({ material }: { material: Material }) {
             <Accordion title="Conceptos clave" icon="key-outline" defaultOpen>
               <View style={styles.concepts}>
                 {material.keyConcepts.map((concept) => (
-                  <View key={concept} style={[styles.concept, { backgroundColor: theme.primaryLight }]}>
+                  <Pressable
+                    key={concept}
+                    accessibilityRole="link"
+                    accessibilityHint="Abre el significado y el contexto de este concepto"
+                    onPress={() =>
+                      router.push({ pathname: '/termino', params: { materialId: material.id, term: concept } })
+                    }
+                    style={({ pressed }) => [
+                      styles.concept,
+                      { backgroundColor: theme.primaryLight, opacity: pressed ? 0.6 : 1 },
+                    ]}
+                  >
                     <Text style={[styles.conceptText, { color: theme.primary }]}>{concept}</Text>
-                  </View>
+                  </Pressable>
                 ))}
               </View>
+              <Text style={[styles.hint, styles.conceptsHint, { color: theme.textMuted }]}>
+                Toca un concepto para ver qué significa y dónde aparece.
+              </Text>
             </Accordion>
           ) : null}
+
+          <GuideSection material={material} subjectName={subjectName} onUseAi={retry} />
 
           <Tutor material={material} />
         </>
@@ -180,9 +216,12 @@ function MaterialContent({ material }: { material: Material }) {
 
       {material.sourceText ? (
         <Accordion title="Apunte original" icon="text-long">
-          <Text selectable style={[styles.source, { color: theme.textSecondary }]}>
-            {material.sourceText}
-          </Text>
+          <GlossaryText
+            text={material.sourceText}
+            terms={terms}
+            materialId={material.id}
+            style={[styles.source, { color: theme.textSecondary }]}
+          />
         </Accordion>
       ) : null}
 
@@ -238,10 +277,94 @@ function StudyTile({
   );
 }
 
+/** Guía de estudio de la IA, o la forma de obtenerla si el apunte todavía no la tiene. */
+function GuideSection({
+  material,
+  subjectName,
+  onUseAi,
+}: {
+  material: Material;
+  subjectName: string;
+  onUseAi: () => void;
+}) {
+  const { theme } = useTheme();
+  const { canUseCloud } = useSync();
+  const careers = activeCareers(useProfile());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const create = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await generateGuide(material, subjectName);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo preparar la guía.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isLocal = material.generator === 'local';
+
+  return (
+    <View style={styles.guide}>
+      <SectionTitle
+        title="Guía de estudio"
+        subtitle={material.guide ? 'Preparada por la IA para ti' : undefined}
+        right={
+          material.guide && canUseCloud ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Actualizar la guía con mis carreras actuales"
+              hitSlop={8}
+              disabled={loading}
+              onPress={create}
+            >
+              <Text style={[styles.retry, { color: theme.primary }]}>{loading ? 'Actualizando…' : 'Actualizar'}</Text>
+            </Pressable>
+          ) : undefined
+        }
+      />
+      {error ? <Banner tone="error" icon="alert-circle-outline" title={error} /> : null}
+
+      {material.guide ? (
+        <StudyGuideView guide={material.guide} careers={careers} materialId={material.id} />
+      ) : (
+        <Card style={styles.guideEmpty}>
+          <MaterialCommunityIcons name="map-marker-path" size={30} color={theme.primary} />
+          <Text style={[styles.guideEmptyText, { color: theme.textSecondary }]}>
+            Explicación sencilla, glosario de palabras difíciles, plan de estudio, otras formas de entender el
+            tema y para qué te sirve en tu carrera.
+          </Text>
+          {canUseCloud ? (
+            <RippleButton
+              label={isLocal ? 'Usar IA en este apunte' : 'Generar guía de estudio'}
+              icon="creation"
+              variant="soft"
+              loading={loading}
+              onPress={isLocal ? onUseAi : create}
+            />
+          ) : (
+            <Text style={[styles.guideEmptyHint, { color: theme.textMuted }]}>
+              La guía la prepara la IA en la nube: necesita conexión y una cuenta iniciada.
+            </Text>
+          )}
+          {loading ? (
+            <ShimmeringText text="Preparando tu guía" style={[styles.thinking, { color: theme.primary }]} />
+          ) : null}
+        </Card>
+      )}
+    </View>
+  );
+}
+
 /** "Explicación de temas difíciles": preguntas libres con el apunte como contexto. */
 function Tutor({ material }: { material: Material }) {
   const { theme } = useTheme();
   const { canUseCloud } = useSync();
+  const profile = useProfile();
+  const careers = activeCareers(profile);
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -257,7 +380,7 @@ function Tutor({ material }: { material: Material }) {
     setAnswer(null);
     try {
       const context = [material.summary, material.sourceText].filter(Boolean).join('\n\n');
-      setAnswer(await explainWithAi({ question: question.trim(), title: material.title, context }));
+      setAnswer(await explainWithAi({ question: question.trim(), title: material.title, context, careers, semester: profile?.semester }));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo obtener la explicación.');
     } finally {
@@ -306,12 +429,18 @@ const styles = StyleSheet.create({
   lastScore: { fontSize: 12.5, textAlign: 'center' },
   summary: { gap: 8 },
   summaryText: { fontSize: 14.5, lineHeight: 22 },
+  hint: { fontSize: 12, fontStyle: 'italic' },
+  conceptsHint: { marginTop: 10 },
   concepts: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   concept: { paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14 },
   conceptText: { fontSize: 12.5, fontWeight: '700' },
   source: { fontSize: 13.5, lineHeight: 20 },
   photo: { width: '100%', height: 320, borderRadius: 12 },
   tutor: { gap: 10 },
+  guide: { gap: 12 },
+  guideEmpty: { alignItems: 'center', gap: 10, paddingVertical: 20 },
+  guideEmptyText: { fontSize: 13.5, lineHeight: 20, textAlign: 'center' },
+  guideEmptyHint: { fontSize: 12.5, textAlign: 'center' },
   thinking: { fontSize: 13.5, fontWeight: '700' },
   answer: { fontSize: 14, lineHeight: 21 },
 });

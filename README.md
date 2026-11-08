@@ -67,6 +67,9 @@ Si cambias `src/db/schema.ts`, genera la migración con `npm run db:generate`; s
 | Cargar fotos, documentos o texto | `src/app/(tabs)/escanear.tsx`, `src/components/CameraScanner.tsx` |
 | Generar resumen, conceptos, flashcards y quiz con IA | `supabase/functions/study-ai/`, `src/services/ai/` |
 | Explicar temas difíciles (tutor) | Sección «Pregúntale a StudyIA» en `src/app/material/[id].tsx` |
+| Guía de estudio con IA: explicación sencilla, glosario, plan de estudio, otras formas de entenderlo, relación con la carrera, recomendaciones y «para saber más» | `src/components/StudyGuide.tsx`, `supabase/functions/study-ai/` |
+| Palabras difíciles en negrilla y subrayadas, y conceptos clave que se pueden tocar: abren su significado (de la guía o, si no está, de la frase del apunte que lo define) y su contexto | `src/components/GlossaryText.tsx`, `src/app/termino.tsx`, `src/lib/glossary.ts` |
+| Varias carreras con una principal, mezcla de temáticas y semestre | Tarjeta «Mis carreras» en Perfil, `src/lib/careers.ts` |
 | Estudiar con repetición espaciada (Leitner) | `src/app/estudio/flashcards.tsx`, `src/lib/study.ts` |
 | Registrar resultados de los quizzes | `src/app/estudio/quiz.tsx` |
 | Estadísticas de progreso y racha | `src/app/(tabs)/practica.tsx`, `src/lib/study.ts` |
@@ -83,7 +86,7 @@ src/
 ├── context/        # AuthContext, SyncContext, RemindersContext, ThemeContext
 ├── db/             # schema.ts, client.ts y repositorios (solo ellos hablan con Drizzle)
 ├── hooks/          # useStudyData (useLiveQuery), useCamera
-├── lib/            # supabase, secureStorage y lógica pura de estudio
+├── lib/            # supabase, secureStorage y lógica pura (estudio, carreras, glosario, progreso)
 └── services/       # ai/ (pipeline y generadores), sync/, files.ts
 supabase/
 ├── migrations/     # Esquema de Postgres con RLS
@@ -95,6 +98,8 @@ drizzle/            # Migraciones de SQLite
 - **Sincronización** (`src/services/sync/`): baja y luego sube, con regla «gana el último cambio» y borrado lógico (`deletedAt`). Es totalmente automática: al abrir la app, al iniciar sesión, al recuperar la conexión, al volver a la app y unos segundos después de cada cambio. Si falla, reintenta sola con esperas crecientes, sin ningún botón. Una fila está pendiente si `syncedAt` está vacío o es anterior a `updatedAt`.
 - **Sesión:** en SecureStore, con un adaptador que parte el valor en fragmentos. Sin red y con el token vencido, la cuenta sigue abierta para poder estudiar.
 - **Recordatorios:** hay un solo aviso programado a la vez, con id fijo. Se recalcula con los datos de SQLite cada vez que cambian las flashcards o la actividad y al volver a la app. Solo avisa si hay flashcards vencidas a esa hora o si la racha está en riesgo; si no hay nada, no programa nada. El permiso se pide al activar el interruptor, no al abrir la app. Al cerrar sesión se cancela.
+- **Carreras:** la carrera principal pinta la app con el color de su facultad (tonos elegidos por contraste: en claro llevan texto blanco y en oscuro un tono claro con texto oscuro). Con «Mezclar temáticas», la tarjeta de Inicio combina los colores de dos facultades y la IA relaciona cada apunte con todas las carreras. El semestre ajusta la profundidad de la IA y ordena las asignaturas sugeridas por nivel.
+- **Guía de estudio:** el resumen, las flashcards y el quiz se basan solo en el apunte. La guía sí puede aportar conocimiento de la IA, pero lo que no viene del apunte va únicamente en «Para saber más», marcado como tal. Los apuntes anteriores tienen un botón «Generar guía», que no toca las flashcards ni su progreso, y «Actualizar» la rehace con las carreras actuales.
 - **IA:** la clave vive solo en la Edge Function. La función verifica la sesión, aplica una cuota diaria, reintenta ante 503 o timeout y usa un modelo de respaldo.
 - **Sin conexión:** el texto se analiza con un generador local **que no es IA**: extrae frases del apunte y la app lo marca como «Generado sin IA». Fotos y PDF solo los puede leer la IA, así que quedan pendientes y se procesan al volver la conexión.
 
@@ -126,8 +131,12 @@ drizzle/            # Migraciones de SQLite
 - Teclado: el campo activo queda visible y el scroll funciona con el teclado abierto.
 - Recordatorio: permiso, programación y llegada de la notificación a la hora elegida («Hora de repasar · 8 flashcards te esperan.»).
 - Gráficas de la semana y de quizzes en tema claro y oscuro, con su vista de tabla.
+- Carreras: agregar, cambiar la principal (la app cambia de color), mezclar dos facultades y elegir el semestre; sugerencias de asignaturas según carrera y semestre.
+- Guía de estudio y palabras subrayadas: se probó la presentación con una guía de ejemplo cargada en SQLite, incluida la pantalla del término con su contexto.
 
-Además, 45 pruebas unitarias con Jest.
+Además, 64 pruebas unitarias con Jest.
+
+**Desplegado pero sin probar con Gemini real:** la guía generada por la IA (Edge Function versión 4). Probarla requiere iniciar sesión con una cuenta; las pruebas se hicieron en modo sin cuenta.
 
 **Probado solo con la API de Gemini simulada:** reintentos, modelo de respaldo, cuota y validaciones de la Edge Function.
 
@@ -140,6 +149,8 @@ Además, 45 pruebas unitarias con Jest.
 - La versión web no funciona: `expo-sqlite` se bloquea en el navegador al abrir la base de forma síncrona. El objetivo es móvil.
 - Las fotos y los PDF se quedan en el teléfono donde se subieron. A otro dispositivo solo llega lo generado.
 - Los datos del modo sin cuenta no pasan a una cuenta creada después.
+- El catálogo de asignaturas de Uniguajira solo tiene áreas generales: para carreras como Medicina sugiere Ciencias Básicas, no asignaturas propias de la carrera.
+- Sin conexión, el generador local no prepara guía; aparece al usar la IA sobre el apunte.
 - Los archivos Word no se admiten: solo PDF, texto e imágenes.
 - En Expo Go para Android no se puede crear el canal propio «Recordatorios de repaso». El aviso sale entonces por el canal por defecto y en el registro aparece una advertencia. En un development build el canal se crea normalmente.
 - En desarrollo, al guardar un archivo puede aparecer un aviso `REMOVE_ROUTES` por Fast Refresh. No apareció en arranques limpios ni al cerrar sesión.

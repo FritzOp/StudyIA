@@ -3,13 +3,15 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { ActivityCard, StatCard, SubjectCard } from '@/components/Cards';
 import { AnimatedEntrance, AnimatedPressable, AnimatedPulse, RippleButton } from '@/components/motion';
-import { Banner, EmptyState, SectionTitle } from '@/components/ui';
+import { asIcon, Banner, EmptyState, SectionTitle } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useSync } from '@/context/SyncContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useProfile, useStudyOverview } from '@/hooks/useStudyData';
+import { activeCareers, careerInfo } from '@/lib/careers';
 import { initialsOf } from '@/lib/study';
 
 function greeting(): string {
@@ -20,12 +22,13 @@ function greeting(): string {
 }
 
 export default function HomeScreen() {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const { isGuest } = useAuth();
   const { canUseCloud, isOnline, lastError } = useSync();
   const insets = useSafeAreaInsets();
   const profile = useProfile();
   const { stats, bySubject, activities } = useStudyOverview();
+  const careers = activeCareers(profile);
 
   const engine = canUseCloud
     ? { label: 'IA EN LA NUBE ACTIVA', color: '#34D399' }
@@ -72,13 +75,37 @@ export default function HomeScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <AnimatedEntrance>
-          <View style={[styles.hero, { backgroundColor: isDark ? '#1E1B4B' : '#312E81' }]}>
+          <View style={[styles.hero, { backgroundColor: theme.hero }]}>
+            {theme.heroAlt ? (
+              // Dos carreras de facultades distintas: la tarjeta mezcla sus dos colores.
+              <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none" viewBox="0 0 100 100">
+                <Defs>
+                  <LinearGradient id="heroMix" x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0.25" stopColor={theme.hero} />
+                    <Stop offset="1" stopColor={theme.heroAlt} />
+                  </LinearGradient>
+                </Defs>
+                <Rect width="100" height="100" fill="url(#heroMix)" />
+              </Svg>
+            ) : null}
             <View style={styles.engine}>
               <AnimatedPulse active={canUseCloud}>
                 <MaterialCommunityIcons name="creation" size={14} color={engine.color} />
               </AnimatedPulse>
               <Text style={[styles.engineText, { color: engine.color }]}>{engine.label}</Text>
             </View>
+            {careers.length > 0 ? (
+              <View style={styles.careers}>
+                {careers.map((career) => (
+                  <View key={career} style={styles.career}>
+                    <MaterialCommunityIcons name={asIcon(careerInfo(career).icon)} size={13} color="#FFFFFF" />
+                    <Text style={styles.careerText} numberOfLines={1}>
+                      {career}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
             <Text style={styles.heroTitle}>Transforma tus apuntes en estudio inteligente</Text>
             <Text style={styles.heroSubtitle}>
               Sube una foto, un PDF o tu texto y obtén un resumen, flashcards y un quiz.
@@ -223,11 +250,23 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: '#FFFFFF', fontSize: 9.5, fontWeight: '800' },
   content: { padding: 16, gap: 16, paddingBottom: 28 },
-  hero: { borderRadius: 22, padding: 18, gap: 8 },
+  hero: { borderRadius: 22, padding: 18, gap: 8, overflow: 'hidden' },
+  careers: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  career: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    maxWidth: '100%',
+  },
+  careerText: { color: '#FFFFFF', fontSize: 11.5, fontWeight: '700', flexShrink: 1 },
   engine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   engineText: { fontSize: 10.5, fontWeight: '800', letterSpacing: 0.5 },
   heroTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '800', lineHeight: 26 },
-  heroSubtitle: { color: '#C7D2FE', fontSize: 13, lineHeight: 19, marginBottom: 6 },
+  heroSubtitle: { color: 'rgba(255,255,255,0.82)', fontSize: 13, lineHeight: 19, marginBottom: 6 },
   stats: { flexDirection: 'row', gap: 10 },
   due: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: 1.5, padding: 14 },
   dueTitle: { fontSize: 14, fontWeight: '800' },

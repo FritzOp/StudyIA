@@ -1,10 +1,18 @@
 import { materialsRepo } from '@/db/repositories/materials';
+import { profilesRepo } from '@/db/repositories/profiles';
 import { studyRepo } from '@/db/repositories/study';
 import type { Material } from '@/db/schema';
+import { activeCareers } from '@/lib/careers';
 import { fileExists, readAsBase64 } from '@/services/files';
 import { generateLocally, TextTooShortError } from './localGenerator';
-import { generateWithAi, RemoteAiError } from './remoteGenerator';
+import { generateWithAi, guideWithAi, RemoteAiError } from './remoteGenerator';
 import type { StudyPack } from './types';
+
+/** Carreras y semestre con los que la IA enfoca la guía, los ejemplos y la profundidad. */
+async function studentOf(userId: string): Promise<{ careers: string[]; semester?: string }> {
+  const profile = await profilesRepo.get(userId);
+  return { careers: activeCareers(profile), semester: profile?.semester };
+}
 
 export type AiContext = {
   /** Hay conexión y sesión real: se puede llamar a la Edge Function. */
@@ -16,13 +24,18 @@ const running = new Set<string>();
 
 class MissingFileError extends Error {}
 
-async function generateFromFile(material: Material, subject: string): Promise<StudyPack> {
+async function generateFromFile(
+  material: Material,
+  subject: string,
+  student: { careers: string[]; semester?: string }
+): Promise<StudyPack> {
   if (!material.fileUri || !fileExists(material.fileUri)) {
     throw new MissingFileError('El archivo original no está en este teléfono.');
   }
   return generateWithAi({
     title: material.title,
     subject,
+    ...student,
     file: {
       base64: await readAsBase64(material.fileUri),
       mediaType: material.mimeType ?? 'image/jpeg',
@@ -60,13 +73,15 @@ export async function processMaterial(materialId: string, ctx: AiContext): Promi
 
     if (ctx.canUseCloud) {
       try {
+        const student = await studentOf(material.userId);
         const pack = hasText
           ? await generateWithAi({
               title: material.title,
               subject: ctx.subjectName,
+              ...student,
               text: material.sourceText ?? '',
             })
-          : await generateFromFile(material, ctx.subjectName);
+          : await generateFromFile(material, ctx.subjectName, student);
         await finish(material, pack, 'ai', ctx.subjectName);
         return;
       } catch (error) {
@@ -105,6 +120,32 @@ export async function processMaterial(materialId: string, ctx: AiContext): Promi
   } finally {
     running.delete(materialId);
   }
+}
+
+const GUIDE_SOURCE_CHARS = 30_000;
+
+/** Lo que la IA necesita para preparar la guía de un apunte que ya está procesado. */
+export function guideContext(material: Pick<Material, 'summary' | 'keyConcepts' | 'sourceText'>): string {
+  const parts = [
+    material.summary ? `Resumen:\n${material.summary}` : '',
+    material.keyConcepts?.length ? `Conceptos clave: ${material.keyConcepts.join(', ')}` : '',
+    material.sourceText?.trim() ? `Texto original:\n${material.sourceText.slice(0, GUIDE_SOURCE_CHARS)}` : '',
+  ];
+  return parts.filter(Boolean).join('\n\n');
+}
+
+/**
+ * Genera solo la guía de estudio, para apuntes creados antes de que existiera o cuyas carreras
+ * cambiaron. No toca las flashcards ni el quiz, así que no se pierde el progreso del repaso.
+ */
+export async function generateGuide(material: Material, subjectName: string): Promise<void> {
+  const guide = await guideWithAi({
+    title: material.title,
+    subject: subjectName,
+    ...(await studentOf(material.userId)),
+    context: guideContext(material),
+  });
+  await materialsRepo.saveGuide(material.id, guide);
 }
 
 /** Retoma lo pendiente, incluidos los apuntes que quedaron a medias si la app se cerró. */

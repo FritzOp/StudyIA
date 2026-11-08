@@ -83,6 +83,7 @@ function RootNavigator() {
           <Stack.Screen name="estudio/flashcards" />
           <Stack.Screen name="estudio/quiz" />
           <Stack.Screen name="universidad" />
+          <Stack.Screen name="termino" />
         </Stack.Protected>
         <Stack.Protected guard={!userId}>
           <Stack.Screen name="login" />

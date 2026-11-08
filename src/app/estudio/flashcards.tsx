@@ -145,8 +145,8 @@ function Session({ cards, materialId }: { cards: Flashcard[]; materialId?: strin
           }
           back={
             <View style={[styles.face, { backgroundColor: theme.primary, borderColor: theme.primary }]}>
-              <Text style={[styles.faceTag, { color: '#C7D2FE' }]}>RESPUESTA</Text>
-              <Text style={[styles.faceText, { color: '#FFFFFF' }]}>{current.answer}</Text>
+              <Text style={[styles.faceTag, { color: theme.onPrimary, opacity: 0.75 }]}>RESPUESTA</Text>
+              <Text style={[styles.faceText, { color: theme.onPrimary }]}>{current.answer}</Text>
             </View>
           }
         />

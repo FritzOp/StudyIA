@@ -31,6 +31,19 @@ export const profilesRepo = {
       .onConflictDoNothing();
   },
 
+  /** La primera carrera de la lista es la principal; las demás son adicionales. */
+  async setCareers(userId: string, careers: string[], mixCareers: boolean): Promise<void> {
+    if (careers.length === 0) return;
+    await db
+      .update(profiles)
+      .set({ career: careers[0], extraCareers: careers.slice(1), mixCareers, updatedAt: new Date() })
+      .where(eq(profiles.id, userId));
+  },
+
+  async setSemester(userId: string, semester: string): Promise<void> {
+    await db.update(profiles).set({ semester, updatedAt: new Date() }).where(eq(profiles.id, userId));
+  },
+
   async update(userId: string, input: ProfileInput): Promise<void> {
     await db
       .update(profiles)

@@ -10,24 +10,34 @@ export function CareerPicker({
   value,
   onSelect,
   onClose,
+  title = 'Programas Uniguajira',
+  allowCustom = false,
+  exclude = [],
 }: {
   visible: boolean;
   value: string;
   onSelect: (career: string) => void;
   onClose: () => void;
+  title?: string;
+  /** Permite usar lo escrito en la búsqueda si la carrera no está en el catálogo. */
+  allowCustom?: boolean;
+  /** Carreras que ya tiene el estudiante: no se vuelven a ofrecer. */
+  exclude?: string[];
 }) {
   const { theme } = useTheme();
   const [search, setSearch] = useState('');
 
   const programs = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const taken = new Set(exclude.map((c) => c.toLowerCase()));
     return getAllUndergraduatePrograms().filter(
       (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.facultyName.toLowerCase().includes(q) ||
-        p.code.toLowerCase().includes(q)
+        !taken.has(p.name.toLowerCase()) &&
+        (p.name.toLowerCase().includes(q) ||
+          p.facultyName.toLowerCase().includes(q) ||
+          p.code.toLowerCase().includes(q))
     );
-  }, [search]);
+  }, [search, exclude]);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -35,7 +45,7 @@ export function CareerPicker({
         <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
           <View style={styles.header}>
             <MaterialCommunityIcons name="school" size={24} color={theme.primary} />
-            <Text style={[styles.title, { color: theme.textPrimary }]}>Programas Uniguajira</Text>
+            <Text style={[styles.title, { color: theme.textPrimary }]}>{title}</Text>
             <Pressable accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={10} onPress={onClose}>
               <MaterialCommunityIcons name="close" size={22} color={theme.textMuted} />
             </Pressable>
@@ -63,6 +73,7 @@ export function CareerPicker({
                   accessibilityState={{ selected }}
                   onPress={() => {
                     onSelect(p.name);
+                    setSearch('');
                     onClose();
                   }}
                   style={[
@@ -85,7 +96,28 @@ export function CareerPicker({
                 </Pressable>
               );
             })}
-            {programs.length === 0 ? (
+            {allowCustom &&
+            search.trim().length >= 3 &&
+            !programs.some((p) => p.name.toLowerCase() === search.trim().toLowerCase()) ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  onSelect(search.trim());
+                  setSearch('');
+                  onClose();
+                }}
+                style={[styles.item, { backgroundColor: theme.surfaceElevated, borderColor: theme.border }]}
+              >
+                <MaterialCommunityIcons name="plus-circle-outline" size={20} color={theme.primary} />
+                <View style={styles.itemText}>
+                  <Text style={[styles.itemName, { color: theme.textPrimary }]}>Usar «{search.trim()}»</Text>
+                  <Text style={[styles.itemFaculty, { color: theme.textMuted }]}>
+                    No está en el catálogo de Uniguajira
+                  </Text>
+                </View>
+              </Pressable>
+            ) : null}
+            {programs.length === 0 && !allowCustom ? (
               <Text style={[styles.none, { color: theme.textMuted }]}>Sin resultados.</Text>
             ) : null}
           </ScrollView>

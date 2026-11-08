@@ -1,6 +1,6 @@
 import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import type { StudyPack } from './types';
+import type { StudyGuide, StudyPack } from './types';
 
 const FUNCTION_NAME = 'study-ai';
 
@@ -45,16 +45,32 @@ async function invoke<T>(body: Record<string, unknown>): Promise<T> {
 export async function generateWithAi(input: {
   title: string;
   subject: string;
+  careers: string[];
+  semester?: string;
   text?: string;
   file?: { base64: string; mediaType: string };
 }): Promise<StudyPack> {
   return invoke<StudyPack>({ action: 'generate', ...input });
 }
 
+/** Guía para un apunte ya procesado: se arma con su resumen, conceptos y texto. */
+export async function guideWithAi(input: {
+  title: string;
+  subject: string;
+  careers: string[];
+  semester?: string;
+  context: string;
+}): Promise<StudyGuide> {
+  const { guide } = await invoke<{ guide: StudyGuide }>({ action: 'guide', ...input });
+  return guide;
+}
+
 export async function explainWithAi(input: {
   question: string;
   title: string;
   context: string;
+  careers: string[];
+  semester?: string;
 }): Promise<string> {
   const { answer } = await invoke<{ answer: string }>({ action: 'explain', ...input });
   return answer;

@@ -19,6 +19,12 @@ export const baseColors = {
 export const lightTheme = {
   ...baseColors,
   isDark: false,
+  /** Texto o ícono encima de `primary`. Cambia con la carrera: algunos acentos llevan texto oscuro. */
+  onPrimary: '#FFFFFF',
+  /** Fondo de la tarjeta principal de Inicio. */
+  hero: '#312E81',
+  /** Segundo color de la tarjeta cuando se mezclan dos carreras de facultades distintas. */
+  heroAlt: null as string | null,
   background: '#F8FAFC',
   cardBg: '#FFFFFF',
   surface: '#FFFFFF',
@@ -34,6 +40,9 @@ export const lightTheme = {
 export const darkTheme: typeof lightTheme = {
   ...baseColors,
   isDark: true,
+  onPrimary: '#FFFFFF',
+  hero: '#1E1B4B',
+  heroAlt: null,
   background: '#0B0F19',
   cardBg: '#151D30',
   surface: '#111827',

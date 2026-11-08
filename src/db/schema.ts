@@ -1,4 +1,5 @@
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import type { StudyGuide } from '../services/ai/types';
 
 // Este archivo lo lee drizzle-kit con Node: no debe importar paquetes de Expo.
 
@@ -53,6 +54,8 @@ export const materials = sqliteTable(
     errorMessage: text('error_message'),
     summary: text('summary'),
     keyConcepts: text('key_concepts', { mode: 'json' }).$type<string[]>(),
+    /** Guía de estudio de la IA (explicación, glosario, plan...). Vacía si se generó sin IA. */
+    guide: text('guide', { mode: 'json' }).$type<StudyGuide>(),
   },
   (t) => [index('materials_user_idx').on(t.userId), index('materials_subject_idx').on(t.subjectId)]
 );
@@ -133,7 +136,12 @@ export const profiles = sqliteTable('profiles', {
   name: text('name').notNull(),
   email: text('email').notNull().default(''),
   institution: text('institution').notNull().default('Universidad de La Guajira'),
+  /** Carrera principal: define el color de la app y el enfoque de la IA. */
   career: text('career').notNull().default('Ingeniería de Sistemas'),
+  /** Otras carreras del estudiante (doble programa, cambio de carrera...). */
+  extraCareers: text('extra_careers', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  /** Si es verdadero, la app y la IA combinan todas las carreras; si no, solo la principal. */
+  mixCareers: integer('mix_careers', { mode: 'boolean' }).notNull().default(false),
   semester: text('semester').notNull().default('1er Semestre'),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   syncedAt: integer('synced_at', { mode: 'timestamp_ms' }),

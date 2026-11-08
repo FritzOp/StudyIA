@@ -42,8 +42,8 @@ export function RippleButton({
   const scale = useSharedValue(1);
 
   const palette: Record<Variant, { bg: string; fg: string; wave: string }> = {
-    primary: { bg: theme.primary, fg: '#FFFFFF', wave: 'rgba(255,255,255,0.35)' },
-    soft: { bg: theme.primaryLight, fg: theme.primary, wave: 'rgba(99,102,241,0.25)' },
+    primary: { bg: theme.primary, fg: theme.onPrimary, wave: 'rgba(255,255,255,0.35)' },
+    soft: { bg: theme.primaryLight, fg: theme.primary, wave: `${theme.primary}40` },
     danger: { bg: theme.errorLight, fg: theme.error, wave: 'rgba(239,68,68,0.25)' },
     ghost: { bg: 'transparent', fg: theme.textSecondary, wave: 'rgba(100,116,139,0.2)' },
   };

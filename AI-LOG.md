@@ -6,6 +6,7 @@
 
 1. «En la carpeta de trabajo hay un proyecto el cual se debe seguir avanzando […]. Ahí te puse unas rutas de otras cosas que se han hecho en clases […] y también creo que en una utilicé animación, igual te dejo el enlace https://animate-ui.com/docs/installation; usa la que se pueda implementar en app móvil o rehazla para móvil.»
 2. «Sigue avanzando con el proyecto.» La IA propuso recordatorios de repaso con notificaciones locales y gráficas de progreso en Práctica.
+3. «Cómo funciona lo de los programas, ¿es funcional o solo es decoración? Que al establecer una carrera la aplicación sea temática a esta, que pueda agregar otra carrera o cambiarla, y que se mezclen las temáticas o que cambie; que al tomar la captura del apunte la IA recomiende, explique, dé alternativas, un plan de estudio, aporte conocimiento y explique palabras o conceptos difíciles.» Después pidió poder elegir el semestre y que las palabras explicadas salieran en negrilla y subrayadas, con una pantalla de significado y contexto al tocarlas.
 
 ## Qué generó la IA
 
@@ -47,3 +48,6 @@ Pasaban lint, tipos y pruebas unitarias; solo aparecieron al usar la app real:
 
 - **Proveedor de IA:** Gemini en plan gratuito, con la clave solo en los secretos de Supabase. Google puede usar el contenido en ese plan, así que la app lo avisa.
 - **Sin conexión:** el generador local se presenta como «Generado sin IA»; no se hace pasar por IA.
+- **Programas académicos:** antes eran decorativos (solo un texto en el perfil). Ahora la carrera cambia el color de la app, orienta a la IA y sugiere asignaturas.
+- **Conocimiento externo de la IA:** el resumen, las flashcards y el quiz siguen basados solo en el apunte. La guía puede aportar más, pero aparte y marcado («Esto no viene de tu apunte»), para que el estudiante sepa qué contrastar.
+- **Colores por facultad:** los tonos se eligieron calculando el contraste, no a ojo. Ningún tono servía a la vez para texto blanco y para leerse sobre las tarjetas oscuras, así que en modo oscuro el acento lleva texto oscuro encima (`onPrimary`).

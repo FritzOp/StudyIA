@@ -8,7 +8,8 @@ import { useUserId } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { uniguajiraCurriculumSubjects } from '@/data/uniguajiraData';
 import { subjectsRepo } from '@/db/repositories/subjects';
-import { useSubject } from '@/hooks/useStudyData';
+import { useProfile, useSubject, useSubjects } from '@/hooks/useStudyData';
+import { activeCareers, semesterNumber, suggestSubjects } from '@/lib/careers';
 import { SUBJECT_COLORS } from '@/theme/colors';
 
 /** Crea una materia o, si recibe id, edita la existente. */
@@ -33,13 +34,27 @@ function SubjectForm({ existing }: { existing: ReturnType<typeof useSubject> }) 
   const [nameError, setNameError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const profile = useProfile();
+  const careers = useMemo(() => activeCareers(profile), [profile]);
+  const semester = semesterNumber(profile?.semester);
+  const subjects = useSubjects();
+  const query = name.trim().toLowerCase();
+
+  // Sin texto se sugieren las asignaturas de la carrera; al escribir se busca en todo el catálogo.
   const suggestions = useMemo(() => {
-    const q = name.trim().toLowerCase();
-    const list = q
-      ? uniguajiraCurriculumSubjects.filter((s) => s.name.toLowerCase().includes(q))
-      : uniguajiraCurriculumSubjects;
-    return list.slice(0, 20);
-  }, [name]);
+    if (query) return uniguajiraCurriculumSubjects.filter((s) => s.name.toLowerCase().includes(query)).slice(0, 20);
+    return suggestSubjects(
+      careers,
+      subjects.map((s) => s.name),
+      12,
+      semester
+    );
+  }, [query, careers, subjects, semester]);
+
+  const suggestionsLabel =
+    query || careers.length === 0
+      ? 'Catálogo Uniguajira (toca para autocompletar)'
+      : `Sugeridas para ${careers.join(' y ')}${profile?.semester ? ` · ${profile.semester.toLowerCase()}` : ''}`;
 
   const save = async () => {
     if (!name.trim()) {
@@ -69,7 +84,7 @@ function SubjectForm({ existing }: { existing: ReturnType<typeof useSubject> }) 
       />
 
       <View style={styles.block}>
-        <Text style={[styles.label, { color: theme.textSecondary }]}>Catálogo Uniguajira (toca para autocompletar)</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>{suggestionsLabel}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

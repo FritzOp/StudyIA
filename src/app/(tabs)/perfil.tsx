@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import MobileIcon from 'reicon-react-native/icons/Mobile';
 import MoonIcon from 'reicon-react-native/icons/Moon';
 import SunIcon from 'reicon-react-native/icons/Sun';
-import { CareerPicker } from '@/components/CareerPicker';
+import { CareersCard } from '@/components/CareersCard';
 import { AnimatedEntrance, AnimatedPressable, RippleButton, SlidingNumber } from '@/components/motion';
 import { ReminderCard } from '@/components/ReminderCard';
 import { Banner, Card, Field, Screen } from '@/components/ui';
@@ -76,6 +76,12 @@ export default function ProfileScreen() {
           <RippleButton label="Editar perfil" icon="pencil-outline" variant="soft" onPress={() => setEditing(true)} />
         </Card>
       </AnimatedEntrance>
+
+      {profile ? (
+        <AnimatedEntrance delay={40}>
+          <CareersCard profile={profile} />
+        </AnimatedEntrance>
+      ) : null}
 
       <AnimatedEntrance delay={70}>
         <Card style={styles.card}>
@@ -156,7 +162,7 @@ export default function ProfileScreen() {
                 ]}
               >
                 <View style={[styles.themeIcon, { backgroundColor: selected ? theme.primary : `${theme.primary}18` }]}>
-                  <Icon size={20} color={selected ? '#FFFFFF' : theme.primary} weight={selected ? 'Filled' : 'Outline'} />
+                  <Icon size={20} color={selected ? theme.onPrimary : theme.primary} weight={selected ? 'Filled' : 'Outline'} />
                 </View>
                 <View style={styles.flex}>
                   <Text style={[styles.themeLabel, { color: theme.textPrimary }]}>{label}</Text>
@@ -222,9 +228,6 @@ function EditProfile({
   const userId = useUserId();
   const { theme } = useTheme();
   const [name, setName] = useState(profile.name);
-  const [career, setCareer] = useState(profile.career);
-  const [semester, setSemester] = useState(profile.semester);
-  const [pickerVisible, setPickerVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const save = async () => {
@@ -234,8 +237,8 @@ function EditProfile({
     }
     await profilesRepo.update(userId, {
       name: name.trim(),
-      career: career.trim(),
-      semester: semester.trim(),
+      career: profile.career,
+      semester: profile.semester,
       institution: profile.institution,
     });
     onClose();
@@ -256,23 +259,6 @@ function EditProfile({
               setError(null);
             }}
           />
-          <Field
-            label="Programa académico"
-            icon="book-education-outline"
-            value={career}
-            onChangeText={setCareer}
-            right={
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Ver catálogo de programas"
-                hitSlop={10}
-                onPress={() => setPickerVisible(true)}
-              >
-                <MaterialCommunityIcons name="chevron-down" size={24} color={theme.primary} />
-              </Pressable>
-            }
-          />
-          <Field label="Semestre" icon="calendar-range" value={semester} onChangeText={setSemester} />
           <View style={styles.sheetActions}>
             <View style={styles.flex}>
               <RippleButton label="Cancelar" variant="ghost" onPress={onClose} />
@@ -283,12 +269,6 @@ function EditProfile({
           </View>
         </View>
       </KeyboardAvoidingView>
-      <CareerPicker
-        visible={pickerVisible}
-        value={career}
-        onSelect={setCareer}
-        onClose={() => setPickerVisible(false)}
-      />
     </Modal>
   );
 }

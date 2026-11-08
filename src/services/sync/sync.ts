@@ -49,6 +49,7 @@ const TABLES: TableSpec[] = [
       errorMessage: 'error_message',
       summary: 'summary',
       keyConcepts: 'key_concepts',
+      guide: 'guide',
     },
   },
   {
@@ -184,7 +185,7 @@ async function push(spec: TableSpec, userId: string): Promise<number> {
 async function syncProfile(userId: string): Promise<void> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('name, email, institution, career, semester, updated_at')
+    .select('name, email, institution, career, extra_careers, mix_careers, semester, updated_at')
     .eq('id', userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -201,6 +202,8 @@ async function syncProfile(userId: string): Promise<void> {
         email: data.email,
         institution: data.institution ?? local.institution,
         career: data.career ?? local.career,
+        extraCareers: Array.isArray(data.extra_careers) ? data.extra_careers : local.extraCareers,
+        mixCareers: data.mix_careers ?? local.mixCareers,
         semester: data.semester ?? local.semester,
         updatedAt,
         syncedAt: updatedAt,
@@ -215,6 +218,8 @@ async function syncProfile(userId: string): Promise<void> {
       email: local.email,
       institution: local.institution,
       career: local.career,
+      extra_careers: local.extraCareers,
+      mix_careers: local.mixCareers,
       semester: local.semester,
       updated_at: local.updatedAt.toISOString(),
     });

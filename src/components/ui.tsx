@@ -352,7 +352,11 @@ export function Chip({
         },
       ]}
     >
-      <Text style={[styles.chipText, { color: selected ? '#FFFFFF' : theme.textSecondary }]}>{label}</Text>
+      <Text
+        style={[styles.chipText, { color: selected ? (color ? '#FFFFFF' : theme.onPrimary) : theme.textSecondary }]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }

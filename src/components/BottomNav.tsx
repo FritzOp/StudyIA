@@ -68,7 +68,7 @@ export default function BottomNav({ state, emitter, navigateToTab }: TabBarProps
                 onPress={onPress}
                 style={[styles.fab, { backgroundColor: theme.primary, borderColor: theme.surface }]}
               >
-                <MaterialCommunityIcons name={tab.icon} size={25} color="#FFFFFF" />
+                <MaterialCommunityIcons name={tab.icon} size={25} color={theme.onPrimary} />
               </AnimatedPressable>
               <Text style={[styles.label, styles.fabLabel, { color: theme.primary }]}>{tab.label}</Text>
             </View>

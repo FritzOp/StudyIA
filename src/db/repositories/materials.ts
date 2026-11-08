@@ -11,7 +11,7 @@ import {
   type MaterialGenerator,
   type MaterialSource,
 } from '@/db/schema';
-import type { StudyPack } from '@/services/ai/types';
+import type { StudyGuide, StudyPack } from '@/services/ai/types';
 
 export type MaterialInput = {
   subjectId: string;
@@ -128,10 +128,15 @@ export const materialsRepo = {
           generator,
           summary: pack.summary,
           keyConcepts: pack.keyConcepts,
+          guide: pack.guide ?? null,
           updatedAt: now,
         })
         .where(eq(materials.id, material.id));
     });
+  },
+
+  async saveGuide(id: string, guide: StudyGuide): Promise<void> {
+    await db.update(materials).set({ guide, updatedAt: new Date() }).where(eq(materials.id, id));
   },
 
   async remove(id: string): Promise<void> {
