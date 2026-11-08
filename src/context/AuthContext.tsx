@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
 import { profilesRepo } from '@/db/repositories/profiles';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { cancelReminder } from '@/services/reminders';
 
 export const GUEST_USER_ID = 'local_guest';
 
@@ -168,6 +169,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
 
       signOut: async () => {
+        // El aviso programado es de esta cuenta: no debe sonar para la siguiente.
+        await cancelReminder();
         setIsGuest(false);
         AsyncStorage.removeItem(GUEST_KEY).catch(() => undefined);
         if (session) {

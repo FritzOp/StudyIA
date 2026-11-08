@@ -5,6 +5,7 @@
 ## Prompts usados
 
 1. «En la carpeta de trabajo hay un proyecto el cual se debe seguir avanzando […]. Ahí te puse unas rutas de otras cosas que se han hecho en clases […] y también creo que en una utilicé animación, igual te dejo el enlace https://animate-ui.com/docs/installation; usa la que se pueda implementar en app móvil o rehazla para móvil.»
+2. «Sigue avanzando con el proyecto.» La IA propuso recordatorios de repaso con notificaciones locales y gráficas de progreso en Práctica.
 
 ## Qué generó la IA
 
@@ -38,6 +39,9 @@ Pasaban lint, tipos y pruebas unitarias; solo aparecieron al usar la app real:
 - **Nombres de archivo:** Android devolvía títulos como `37` o `document:36`. Ahora se ignoran.
 - **Teclado:** tapaba el campo activo. Además, en Android `measureInWindow` no cuenta la barra de estado, así que comparar con la posición del teclado dejaba el campo pegado; se compara con el marco del scroll.
 - **Respaldo:** el usuario pidió quitar el botón «Sincronizar». Ahora es automático, con reintentos crecientes si falla.
+- **Canal de notificaciones:** en Expo Go para Android, `setNotificationChannelAsync` falla con un error nativo y dejaba una promesa sin manejar en pantalla. Ahora el error se captura y el aviso usa el canal por defecto. También se creaba el canal solo al pedir el permiso; ahora se crea al programar cada aviso.
+- **Tocar el recordatorio:** en Expo Go, Expo Go se cierra antes de abrir la app. Lo confirmamos en `logcat`, así que la navegación al repaso queda pendiente de probar en un development build.
+- **Textos de las gráficas:** se corrigieron «p. m.. 8» (doble punto) y «Tus últimos 1 resultados». La gráfica semanal abría en «hoy · sin actividad»; ahora abre en el último día con actividad.
 
 ## Decisiones tomadas por el equipo
 

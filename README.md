@@ -70,6 +70,8 @@ Si cambias `src/db/schema.ts`, genera la migración con `npm run db:generate`; s
 | Estudiar con repetición espaciada (Leitner) | `src/app/estudio/flashcards.tsx`, `src/lib/study.ts` |
 | Registrar resultados de los quizzes | `src/app/estudio/quiz.tsx` |
 | Estadísticas de progreso y racha | `src/app/(tabs)/practica.tsx`, `src/lib/study.ts` |
+| Gráficas de actividad semanal y de evolución en quizzes | `src/components/Charts.tsx`, `src/lib/progress.ts` |
+| Recordatorio de repaso (notificación local, funciona sin conexión) | `src/context/RemindersContext.tsx`, `src/services/reminders.ts`, tarjeta en Perfil |
 | Consultar de nuevo lo generado | `src/app/material/[id].tsx` |
 
 ## Arquitectura
@@ -78,7 +80,7 @@ Si cambias `src/db/schema.ts`, genera la migración con `npm run db:generate`; s
 src/
 ├── app/            # Rutas de Expo Router; Stack.Protected separa el acceso del resto
 ├── components/     # UI compartida; motion/ son las animaciones
-├── context/        # AuthContext, SyncContext, ThemeContext
+├── context/        # AuthContext, SyncContext, RemindersContext, ThemeContext
 ├── db/             # schema.ts, client.ts y repositorios (solo ellos hablan con Drizzle)
 ├── hooks/          # useStudyData (useLiveQuery), useCamera
 ├── lib/            # supabase, secureStorage y lógica pura de estudio
@@ -92,6 +94,7 @@ drizzle/            # Migraciones de SQLite
 - **Offline-first:** SQLite es la fuente de verdad; las pantallas leen de ahí con `useLiveQuery`. La foto va al sistema de archivos y su ruta a SQLite.
 - **Sincronización** (`src/services/sync/`): baja y luego sube, con regla «gana el último cambio» y borrado lógico (`deletedAt`). Es totalmente automática: al abrir la app, al iniciar sesión, al recuperar la conexión, al volver a la app y unos segundos después de cada cambio. Si falla, reintenta sola con esperas crecientes, sin ningún botón. Una fila está pendiente si `syncedAt` está vacío o es anterior a `updatedAt`.
 - **Sesión:** en SecureStore, con un adaptador que parte el valor en fragmentos. Sin red y con el token vencido, la cuenta sigue abierta para poder estudiar.
+- **Recordatorios:** hay un solo aviso programado a la vez, con id fijo. Se recalcula con los datos de SQLite cada vez que cambian las flashcards o la actividad y al volver a la app. Solo avisa si hay flashcards vencidas a esa hora o si la racha está en riesgo; si no hay nada, no programa nada. El permiso se pide al activar el interruptor, no al abrir la app. Al cerrar sesión se cancela.
 - **IA:** la clave vive solo en la Edge Function. La función verifica la sesión, aplica una cuota diaria, reintenta ante 503 o timeout y usa un modelo de respaldo.
 - **Sin conexión:** el texto se analiza con un generador local **que no es IA**: extrae frases del apunte y la app lo marca como «Generado sin IA». Fotos y PDF solo los puede leer la IA, así que quedan pendientes y se procesan al volver la conexión.
 
@@ -121,13 +124,16 @@ drizzle/            # Migraciones de SQLite
 - Foto creada sin conexión: quedó pendiente y se procesó sola al reconectar.
 - Tutor, flashcards, quiz, estadísticas, tema oscuro, cámara y su permiso, borrado y cierre de sesión.
 - Teclado: el campo activo queda visible y el scroll funciona con el teclado abierto.
+- Recordatorio: permiso, programación y llegada de la notificación a la hora elegida («Hora de repasar · 8 flashcards te esperan.»).
+- Gráficas de la semana y de quizzes en tema claro y oscuro, con su vista de tabla.
 
-Además, 37 pruebas unitarias con Jest.
+Además, 45 pruebas unitarias con Jest.
 
 **Probado solo con la API de Gemini simulada:** reintentos, modelo de respaldo, cuota y validaciones de la Edge Function.
 
 **Sin probar todavía:**
 - iOS.
+- Abrir el repaso al tocar el recordatorio. En Expo Go para Android, tocar cualquier notificación local hace que Expo Go se cierre: su `LauncherActivity` falla con «Cannot access database on the main thread». El fallo es de Expo Go y ocurre antes de que llegue a nuestro código. Hay que probarlo con un development build (`npx expo run:android`).
 - Dos teléfonos con la misma cuenta a la vez.
 
 **Limitaciones conocidas:**
@@ -135,5 +141,6 @@ Además, 37 pruebas unitarias con Jest.
 - Las fotos y los PDF se quedan en el teléfono donde se subieron. A otro dispositivo solo llega lo generado.
 - Los datos del modo sin cuenta no pasan a una cuenta creada después.
 - Los archivos Word no se admiten: solo PDF, texto e imágenes.
+- En Expo Go para Android no se puede crear el canal propio «Recordatorios de repaso». El aviso sale entonces por el canal por defecto y en el registro aparece una advertencia. En un development build el canal se crea normalmente.
 - En desarrollo, al guardar un archivo puede aparecer un aviso `REMOVE_ROUTES` por Fast Refresh. No apareció en arranques limpios ni al cerrar sesión.
 - La cuota de IA (40 solicitudes al día por usuario) es de la app; el plan gratuito de Gemini tiene sus propios límites, que se ven en AI Studio.

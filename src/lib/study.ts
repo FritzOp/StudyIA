@@ -24,7 +24,7 @@ export function isDue(card: Pick<Flashcard, 'dueAt'>, now: Date = new Date()): b
   return card.dueAt.getTime() <= now.getTime();
 }
 
-function dayKey(date: Date): string {
+export function dayKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 

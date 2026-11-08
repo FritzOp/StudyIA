@@ -7,6 +7,7 @@ import MoonIcon from 'reicon-react-native/icons/Moon';
 import SunIcon from 'reicon-react-native/icons/Sun';
 import { CareerPicker } from '@/components/CareerPicker';
 import { AnimatedEntrance, AnimatedPressable, RippleButton, SlidingNumber } from '@/components/motion';
+import { ReminderCard } from '@/components/ReminderCard';
 import { Banner, Card, Field, Screen } from '@/components/ui';
 import { useAuth, useUserId } from '@/context/AuthContext';
 import { useSync } from '@/context/SyncContext';
@@ -126,6 +127,10 @@ export default function ProfileScreen() {
             ))}
           </View>
         </Card>
+      </AnimatedEntrance>
+
+      <AnimatedEntrance delay={150}>
+        <ReminderCard />
       </AnimatedEntrance>
 
       <AnimatedEntrance delay={170}>

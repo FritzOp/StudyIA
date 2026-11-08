@@ -1,20 +1,27 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatCard } from '@/components/Cards';
+import { QuizTrendChart, WeeklyActivityChart } from '@/components/Charts';
 import { AnimatedEntrance, AnimatedPressable, ProgressBar, ProgressRing, RippleButton, SlidingNumber } from '@/components/motion';
 import { Card, EmptyState, Screen, SectionTitle } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useStudyOverview } from '@/hooks/useStudyData';
+import { quizTrend, weeklyActivity } from '@/lib/progress';
 import { percentage, timeAgo } from '@/lib/study';
 
 export default function PracticeScreen() {
   const { theme } = useTheme();
-  const { stats, bySubject, attempts, materials, subjects } = useStudyOverview();
+  const { stats, bySubject, attempts, materials, subjects, activities } = useStudyOverview();
 
   const ready = useMemo(() => materials.filter((m) => m.status === 'ready'), [materials]);
-  const titleOf = (id: string) => materials.find((m) => m.id === id)?.title ?? 'Apunte eliminado';
+  const titleOf = useCallback(
+    (id: string) => materials.find((m) => m.id === id)?.title ?? 'Apunte eliminado',
+    [materials]
+  );
+  const week = useMemo(() => weeklyActivity(activities), [activities]);
+  const trend = useMemo(() => quizTrend(attempts, titleOf), [attempts, titleOf]);
   const subjectOf = (id: string) => subjects.find((s) => s.id === id)?.name ?? '';
 
   return (
@@ -86,6 +93,27 @@ export default function PracticeScreen() {
         </>
       )}
 
+      {activities.length > 0 ? (
+        <>
+          <SectionTitle title="Tu semana" subtitle="Apuntes, repasos y quizzes por día" />
+          <Card>
+            <WeeklyActivityChart days={week} />
+          </Card>
+        </>
+      ) : null}
+
+      {attempts.length > 0 ? (
+        <>
+          <SectionTitle
+            title="Evolución en quizzes"
+            subtitle={trend.length === 1 ? 'Tu primer resultado' : `Tus últimos ${trend.length} resultados`}
+          />
+          <Card>
+            <QuizTrendChart points={trend} />
+          </Card>
+        </>
+      ) : null}
+
       {bySubject.length > 0 ? (
         <>
           <SectionTitle title="Progreso por materia" />
@@ -96,7 +124,7 @@ export default function PracticeScreen() {
                   <Text style={[styles.subjectName, { color: theme.textPrimary }]} numberOfLines={1}>
                     {item.subject.name}
                   </Text>
-                  <Text style={[styles.subjectPercent, { color: item.subject.color }]}>{item.progress}%</Text>
+                  <Text style={[styles.subjectPercent, { color: theme.textPrimary }]}>{item.progress}%</Text>
                 </View>
                 <ProgressBar
                   value={item.progress}

@@ -40,6 +40,12 @@
         {
           "photosPermission": "StudyIA accede a tu galería para importar apuntes o fotografías de clase."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "enableRemoteNotifications": false
+        }
       ]
     ],
     "experiments": {
