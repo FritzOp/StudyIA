@@ -1,15 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { RippleButton } from '@/components/motion';
-import { asIcon, Chip, Field, Screen } from '@/components/ui';
+import { asIcon, Card, Chip, Field, Screen } from '@/components/ui';
 import { useUserId } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
-import { uniguajiraCurriculumSubjects } from '@/data/uniguajiraData';
 import { subjectsRepo } from '@/db/repositories/subjects';
 import { useProfile, useSubject, useSubjects } from '@/hooks/useStudyData';
-import { activeCareers, semesterNumber, suggestSubjects } from '@/lib/careers';
+import { activeCareers, semesterNumber } from '@/lib/careers';
+import { searchSubjects, suggestSubjects, type SubjectSuggestion } from '@/lib/subjects';
 import { SUBJECT_COLORS } from '@/theme/colors';
 
 /** Crea una materia o, si recibe id, edita la existente. */
@@ -38,23 +38,38 @@ function SubjectForm({ existing }: { existing: ReturnType<typeof useSubject> }) 
   const careers = useMemo(() => activeCareers(profile), [profile]);
   const semester = semesterNumber(profile?.semester);
   const subjects = useSubjects();
-  const query = name.trim().toLowerCase();
+  // Nombre elegido de la lista: mientras no se edite, la lista desplegable queda cerrada.
+  const [picked, setPicked] = useState<string | null>(null);
+  const query = name.trim();
 
-  // Sin texto se sugieren las asignaturas de la carrera; al escribir se busca en todo el catálogo.
-  const suggestions = useMemo(() => {
-    if (query) return uniguajiraCurriculumSubjects.filter((s) => s.name.toLowerCase().includes(query)).slice(0, 20);
-    return suggestSubjects(
-      careers,
-      subjects.map((s) => s.name),
-      12,
-      semester
-    );
-  }, [query, careers, subjects, semester]);
+  // Sin texto: materias de la carrera, del semestre actual hacia afuera.
+  const suggestions = useMemo(
+    () => suggestSubjects(careers, subjects.map((s) => s.name), 12, semester),
+    [careers, subjects, semester]
+  );
+  // Al escribir: lista desplegable que filtra en todos los planes y en el catálogo.
+  const matches = useMemo(
+    () => (query && query !== picked ? searchSubjects(query, careers, 8) : []),
+    [query, picked, careers]
+  );
 
   const suggestionsLabel =
-    query || careers.length === 0
-      ? 'Catálogo Uniguajira (toca para autocompletar)'
+    careers.length === 0
+      ? 'Materias sugeridas'
       : `Sugeridas para ${careers.join(' y ')}${profile?.semester ? ` · ${profile.semester.toLowerCase()}` : ''}`;
+
+  const pick = (s: SubjectSuggestion) => {
+    setName(s.name);
+    setCode(s.code);
+    if (s.desc) setDescription(s.desc);
+    setIcon(s.icon);
+    setPicked(s.name);
+    setNameError(null);
+    Keyboard.dismiss();
+  };
+
+  const originOf = (s: SubjectSuggestion) =>
+    s.semester ? `${s.source} · ${s.semester}.º semestre` : `Catálogo general · ${s.source}`;
 
   const save = async () => {
     if (!name.trim()) {
@@ -74,7 +89,7 @@ function SubjectForm({ existing }: { existing: ReturnType<typeof useSubject> }) 
       <Field
         label="Nombre"
         icon="book-outline"
-        placeholder="Ej. Bases de Datos"
+        placeholder={`Escribe para buscar, ej. ${suggestions[0]?.name ?? 'Bases de Datos'}`}
         value={name}
         error={nameError}
         onChangeText={(text) => {
@@ -83,30 +98,53 @@ function SubjectForm({ existing }: { existing: ReturnType<typeof useSubject> }) 
         }}
       />
 
-      <View style={styles.block}>
-        <Text style={[styles.label, { color: theme.textSecondary }]}>{suggestionsLabel}</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.row}
-        >
-          {suggestions.map((s) => (
-            <Chip
-              key={s.code}
-              label={s.name}
-              selected={name === s.name}
-              onPress={() => {
-                setName(s.name);
-                setCode(s.code);
-                setDescription(s.desc);
-                setIcon(s.icon);
-                setNameError(null);
-              }}
-            />
+      {matches.length > 0 ? (
+        <Card style={styles.dropdown}>
+          {matches.map((s, index) => (
+            <Pressable
+              key={`${s.source}-${s.name}`}
+              accessibilityRole="button"
+              accessibilityLabel={`${s.name}, ${originOf(s)}`}
+              onPress={() => pick(s)}
+              style={({ pressed }) => [
+                styles.option,
+                index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border },
+                pressed && { backgroundColor: theme.surfaceElevated },
+              ]}
+            >
+              <MaterialCommunityIcons name={asIcon(s.icon)} size={20} color={theme.primary} />
+              <View style={styles.optionText}>
+                <Text style={[styles.optionName, { color: theme.textPrimary }]} numberOfLines={1}>
+                  {s.name}
+                </Text>
+                <Text style={[styles.optionMeta, { color: theme.textMuted }]} numberOfLines={1}>
+                  {originOf(s)}
+                </Text>
+              </View>
+              <MaterialCommunityIcons name="arrow-top-left" size={18} color={theme.textMuted} />
+            </Pressable>
           ))}
-        </ScrollView>
-      </View>
+        </Card>
+      ) : null}
+
+      {!query && suggestions.length > 0 ? (
+        <View style={styles.block}>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>{suggestionsLabel}</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.row}
+          >
+            {suggestions.map((s) => (
+              <Chip key={`${s.source}-${s.name}`} label={s.name} selected={false} onPress={() => pick(s)} />
+            ))}
+          </ScrollView>
+          <Text style={[styles.note, { color: theme.textMuted }]}>
+            Según un plan de estudios de referencia; el oficial de tu programa puede variar.
+          </Text>
+        </View>
+      ) : null}
 
       <Field label="Código (opcional)" icon="identifier" placeholder="Ej. SIS-301" value={code} onChangeText={setCode} />
       <Field
@@ -152,6 +190,12 @@ const styles = StyleSheet.create({
   block: { gap: 7 },
   label: { fontSize: 13, fontWeight: '700' },
   row: { gap: 7, paddingRight: 8 },
+  note: { fontSize: 11.5, fontStyle: 'italic' },
+  dropdown: { paddingVertical: 4, paddingHorizontal: 0, marginTop: -6 },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 14, minHeight: 54 },
+  optionText: { flex: 1, paddingVertical: 8 },
+  optionName: { fontSize: 14.5, fontWeight: '700' },
+  optionMeta: { fontSize: 12, marginTop: 1 },
   multiline: { minHeight: 70, textAlignVertical: 'top' },
   colors: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   color: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },

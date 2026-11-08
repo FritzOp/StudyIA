@@ -1,4 +1,4 @@
-import { uniguajiraCurriculumSubjects, uniguajiraFaculties } from '@/data/uniguajiraData';
+import { uniguajiraFaculties } from '@/data/uniguajiraData';
 
 // Lógica pura de las carreras: qué facultad es cada una, qué colores le pone a la app y qué
 // asignaturas sugiere. Sin imports de Expo para poder probarla con Jest.
@@ -57,26 +57,17 @@ export const FACULTY_ACCENTS: Record<string, FacultyAccent> = {
 
 export const DEFAULT_FACULTY = 'ingenieria';
 
-/** Áreas del plan de estudios que le interesan a cada facultad, de la más a la menos afín. */
-const FACULTY_AREAS: Record<string, string[]> = {
-  ingenieria: ['Ingeniería', 'Ciencias Básicas', 'Investigación'],
-  economicas: ['Administración', 'Economía', 'Finanzas', 'Negocios', 'Investigación'],
-  sociales: ['Ciencias Sociales', 'Humanidades', 'Investigación'],
-  educacion: ['Educación', 'Humanidades', 'Identidad Uniguajira', 'Investigación'],
-  basicas: ['Ciencias Básicas', 'Investigación'],
-  salud: ['Ciencias Básicas', 'Ciencias Sociales', 'Investigación'],
-  artes: ['Humanidades', 'Identidad Uniguajira', 'Investigación'],
-};
-
 export type CareerInfo = {
   name: string;
   /** null si el estudiante escribió una carrera que no está en el catálogo. */
   facultyId: string | null;
   facultyName: string | null;
+  /** Programa del catálogo (null si no está): sirve para su plan de referencia. */
+  programId: string | null;
   icon: string;
 };
 
-function normalize(text: string): string {
+export function normalize(text: string): string {
   return text
     .trim()
     .toLowerCase()
@@ -89,11 +80,18 @@ function normalize(text: string): string {
 export function careerInfo(name: string): CareerInfo {
   const key = normalize(name);
   for (const faculty of uniguajiraFaculties) {
-    if (faculty.programs.some((p) => normalize(p.name) === key)) {
-      return { name: name.trim(), facultyId: faculty.id, facultyName: faculty.name, icon: faculty.icon };
+    const program = faculty.programs.find((p) => normalize(p.name) === key);
+    if (program) {
+      return {
+        name: name.trim(),
+        facultyId: faculty.id,
+        facultyName: faculty.name,
+        programId: program.id,
+        icon: faculty.icon,
+      };
     }
   }
-  return { name: name.trim(), facultyId: null, facultyName: null, icon: 'school-outline' };
+  return { name: name.trim(), facultyId: null, facultyName: null, programId: null, icon: 'school-outline' };
 }
 
 type CareerProfile = { career: string; extraCareers: string[]; mixCareers: boolean };
@@ -145,46 +143,10 @@ export function makePrincipal(list: string[], name: string): string[] {
   return [found, ...list.filter((c) => c !== found)];
 }
 
-export type SubjectSuggestion = (typeof uniguajiraCurriculumSubjects)[number];
-
-/**
- * Asignaturas del plan de estudios afines a las carreras, sin las que el estudiante ya creó.
- * Con varias carreras se intercalan para que ninguna acapare la lista; con semestre, primero
- * van las del nivel que está cursando.
- */
-export function suggestSubjects(
-  careers: string[],
-  existingNames: string[],
-  limit = 8,
-  semester: number | null = null
-): SubjectSuggestion[] {
-  const taken = new Set(existingNames.map(normalize));
-  const faculties = [...new Set(careers.map((c) => careerInfo(c).facultyId ?? DEFAULT_FACULTY))];
-  if (faculties.length === 0) faculties.push(DEFAULT_FACULTY);
-
-  const queues = faculties.map((id) =>
-    bySemester(
-      (FACULTY_AREAS[id] ?? []).flatMap((area) => uniguajiraCurriculumSubjects.filter((s) => s.area === area)),
-      semester
-    )
-  );
-  const out: SubjectSuggestion[] = [];
-  const used = new Set<string>();
-  for (let i = 0; out.length < limit && queues.some((q) => i < q.length); i++) {
-    for (const queue of queues) {
-      const subject = queue[i];
-      if (!subject || used.has(subject.code) || taken.has(normalize(subject.name))) continue;
-      used.add(subject.code);
-      out.push(subject);
-      if (out.length === limit) break;
-    }
-  }
-  return out;
-}
-
 // --- Semestre ---------------------------------------------------------------------------
 
-const ORDINALS = ['1er', '2do', '3er', '4to', '5to', '6to', '7mo', '8vo', '9no', '10mo'];
+// Hasta 12 porque Medicina tiene 12 semestres.
+const ORDINALS = ['1er', '2do', '3er', '4to', '5to', '6to', '7mo', '8vo', '9no', '10mo', '11vo', '12vo'];
 
 /** Semestres que se pueden elegir, con el mismo formato que ya usaba el perfil («1er Semestre»). */
 export const SEMESTERS = ORDINALS.map((ordinal, index) => ({
@@ -203,25 +165,4 @@ export function semesterNumber(label: string | null | undefined): number | null 
 
 export function semesterLabel(n: number): string {
   return SEMESTERS[Math.min(Math.max(n, 1), SEMESTERS.length) - 1].label;
-}
-
-/** Nivel de una asignatura según su código: «SIS-301» es de nivel 3. */
-function subjectLevel(code: string): number {
-  const match = code.match(/-(\d)\d\d$/);
-  return match ? Math.max(1, Number(match[1])) : 1;
-}
-
-/** Nivel del catálogo (1 a 7) que corresponde a un semestre (1 a 10). */
-export function levelForSemester(semester: number): number {
-  return Math.min(7, Math.max(1, Math.ceil(semester * 0.7)));
-}
-
-/** Ordena por cercanía al nivel del semestre; a igual distancia conserva el orden original. */
-export function bySemester<T extends { code: string }>(subjects: T[], semester: number | null): T[] {
-  if (!semester) return subjects;
-  const target = levelForSemester(semester);
-  return subjects
-    .map((subject, index) => ({ subject, index, distance: Math.abs(subjectLevel(subject.code) - target) }))
-    .sort((a, b) => a.distance - b.distance || a.index - b.index)
-    .map((x) => x.subject);
 }

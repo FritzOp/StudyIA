@@ -7,11 +7,9 @@ import {
   FACULTY_ACCENTS,
   makePrincipal,
   MAX_CAREERS,
-  levelForSemester,
   removeCareer,
   semesterLabel,
   semesterNumber,
-  suggestSubjects,
 } from '../src/lib/careers';
 import { uniguajiraFaculties } from '../src/data/uniguajiraData';
 
@@ -74,37 +72,13 @@ describe('agregar, quitar y cambiar la principal', () => {
   });
 });
 
-describe('suggestSubjects', () => {
-  it('sugiere asignaturas de la facultad y omite las que ya existen', () => {
-    const names = suggestSubjects(['Ingeniería de Sistemas'], ['Bases de datos']).map((s) => s.name);
-    expect(names.length).toBeGreaterThan(0);
-    expect(names).not.toContain('Bases de Datos');
-    expect(names[0]).toBe('Introducción a la Ingeniería');
-  });
-
-  it('con dos carreras intercala las dos áreas', () => {
-    const areas = suggestSubjects(['Ingeniería de Sistemas', 'Administración de Empresas'], [], 4).map((s) => s.area);
-    expect(areas).toEqual(['Ingeniería', 'Administración', 'Ingeniería', 'Administración']);
-  });
-});
-
 describe('semestre', () => {
   it('lee el número de los formatos usados', () => {
     expect(semesterNumber('3er Semestre')).toBe(3);
     expect(semesterNumber('semestre 10')).toBe(10);
     expect(semesterNumber('Egresado')).toBeNull();
     expect(semesterNumber('15')).toBeNull();
+    expect(semesterNumber('12vo Semestre')).toBe(12);
     expect(semesterLabel(5)).toBe('5to Semestre');
-  });
-
-  it('el nivel del catálogo crece con el semestre sin pasar de 7', () => {
-    expect(levelForSemester(1)).toBe(1);
-    expect(levelForSemester(5)).toBe(4);
-    expect(levelForSemester(10)).toBe(7);
-  });
-
-  it('con semestre, primero sugiere asignaturas de su nivel', () => {
-    const first = suggestSubjects(['Ingeniería de Sistemas'], [], 3, 5);
-    expect(first.every((s) => /-4\d\d$/.test(s.code))).toBe(true);
   });
 });
