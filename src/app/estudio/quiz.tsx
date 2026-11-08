@@ -45,7 +45,7 @@ export default function QuizScreen() {
         <EmptyState
           icon="help-circle-outline"
           title="Este apunte no tiene quiz"
-          message="El texto no alcanzó para generar preguntas. Prueba con un apunte más completo o procésalo con IA."
+          message="El texto no alcanzó para generar preguntas. Prueba con un apunte más completo o procésalo con StudyIA."
         />
       </Screen>
     );

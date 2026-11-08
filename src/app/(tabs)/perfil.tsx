@@ -192,7 +192,7 @@ export default function ProfileScreen() {
             onPress={() =>
               Alert.alert(
                 'Acerca de StudyIA',
-                'Proyecto Final de Desarrollo Móvil. Ingeniería de Sistemas, Universidad de La Guajira.\n\nLa IA usa la API de Gemini de Google. En su plan gratuito, Google puede usar el contenido enviado para mejorar sus productos, así que evita subir datos personales.'
+                'Proyecto Final de Desarrollo Móvil. Ingeniería de Sistemas, Universidad de La Guajira.\n\nStudyIA usa la API de Gemini de Google. En su plan gratuito, Google puede usar el contenido enviado para mejorar sus productos, así que evita subir datos personales.'
               )
             }
             style={styles.menuItem}

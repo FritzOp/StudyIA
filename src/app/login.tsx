@@ -233,7 +233,7 @@ export default function LoginScreen() {
                   Continuar sin cuenta
                 </Text>
                 <Text style={[styles.guestHint, { color: isDark ? '#FDE68A' : '#92400E' }]}>
-                  Tus datos quedan solo en este teléfono, sin respaldo ni IA en la nube.
+                  Tus datos quedan solo en este teléfono, sin respaldo ni StudyIA en la nube.
                 </Text>
               </View>
             </AnimatedPressable>

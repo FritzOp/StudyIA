@@ -115,7 +115,7 @@ export async function processMaterial(materialId: string, ctx: AiContext): Promi
     await materialsRepo.setStatus(
       materialId,
       'pending',
-      'Las fotos y los PDF se leen con IA: se procesará cuando tengas conexión y una cuenta iniciada.'
+      'StudyIA lee las fotos y los PDF en la nube: se procesará cuando tengas conexión y una cuenta iniciada.'
     );
   } finally {
     running.delete(materialId);

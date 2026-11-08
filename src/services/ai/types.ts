@@ -7,8 +7,11 @@
 export type StudyGuide = {
   /** El tema contado de forma sencilla, con un ejemplo. */
   explanation: string;
-  /** Palabras y conceptos difíciles del apunte. */
-  glossary: { term: string; meaning: string }[];
+  /**
+   * Palabras importantes o difíciles del apunte. meaning: qué significa en el contexto del tema;
+   * example: un ejemplo breve (las guías anteriores no lo traen).
+   */
+  glossary: { term: string; meaning: string; example?: string }[];
   /** Conocimiento que NO viene del apunte. */
   deeper: string[];
   /** Analogías y enfoques distintos para entender el tema. */

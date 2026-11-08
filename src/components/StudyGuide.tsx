@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -22,13 +22,15 @@ export function StudyGuideView({
   guide,
   careers,
   materialId,
+  terms,
 }: {
   guide: StudyGuide;
   careers: string[];
   materialId: string;
+  /** Palabras que se resaltan: glosario, conceptos clave y palabras difíciles. */
+  terms: string[];
 }) {
   const { theme } = useTheme();
-  const terms = useMemo(() => guide.glossary.map((g) => g.term), [guide.glossary]);
   const linked = (text: string, style: object) => (
     <GlossaryText text={text} terms={terms} materialId={materialId} style={style} />
   );
@@ -114,7 +116,7 @@ export function StudyGuideView({
               tone="info"
               icon="information-outline"
               title="Esto no viene de tu apunte"
-              message="Lo aporta la IA para ampliar el tema. Contrástalo con tu docente o tus fuentes."
+              message="Lo aporta StudyIA para ampliar el tema. Contrástalo con tu docente o tus fuentes."
             />
             <Bullets items={guide.deeper} render={linked} />
           </View>

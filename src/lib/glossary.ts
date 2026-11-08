@@ -102,3 +102,92 @@ export function definitionFromText(text: string | null | undefined, term: string
   }
   return null;
 }
+
+// --- Palabras para resaltar sin glosario de la IA -------------------------------------
+
+/** Palabras largas pero comunes que no hace falta explicar. */
+const COMMON_LONG = new Set(
+  `actualmente aprendizaje características conocimiento desarrollar desarrollo diferentes especialmente estudiantes funcionamiento generalmente herramientas importante información inteligencia investigación necesario normalmente particularmente principalmente procesamiento relacionados responsabilidad significativo tradicionalmente universidad utilización`.split(
+    ' '
+  )
+);
+
+/** Señales de un término en otro idioma (sobre todo inglés técnico). */
+const FOREIGN = /(k|w|sh|th|ck|ph)|(ing|ment|ness|tion|ware|set|ship|ity|oo|ee)$/i;
+
+/**
+ * Detecta palabras difíciles o poco comunes en un texto: siglas (IA, CPU), términos en otro
+ * idioma (dataset, Machine Learning) y tecnicismos muy largos. Es una heurística: cuando hay
+ * glosario de la IA, este tiene prioridad.
+ */
+export function difficultWords(text: string | null | undefined, limit = 12): string[] {
+  if (!text) return [];
+  const found = new Map<string, string>();
+  const add = (word: string) => {
+    const key = word.toLowerCase();
+    if (!found.has(key)) found.set(key, word);
+  };
+
+  // Siglas de 2 a 6 mayúsculas.
+  for (const match of text.matchAll(/(?:^|[^\p{L}])(\p{Lu}{2,6})(?=[^\p{L}]|$)/gu)) add(match[1]);
+
+  // Secuencias de palabras extranjeras seguidas («Machine Learning»).
+  for (const match of text.matchAll(/\p{L}+(?:\s+\p{L}+)*/gu)) {
+    const run: string[] = [];
+    const flush = () => {
+      if (run.length > 0) add(run.join(' '));
+      run.length = 0;
+    };
+    const words = match[0].split(/\s+/);
+    const foreign = words.map((w) => w.length >= 4 && !/[áéíóúñ]/i.test(w) && FOREIGN.test(w));
+    const capital = words.map((w) => /^\p{Lu}/u.test(w) && !/[áéíóúñ]/i.test(w));
+    // Una palabra en mayúscula pegada a otra extranjera en mayúscula es parte del mismo nombre.
+    const inRun = words.map(
+      (_, i) =>
+        foreign[i] ||
+        (capital[i] && ((capital[i - 1] && foreign[i - 1]) || (capital[i + 1] && foreign[i + 1])))
+    );
+    words.forEach((word, i) => {
+      if (inRun[i]) run.push(word);
+      else flush();
+    });
+    flush();
+  }
+
+  // Tecnicismos largos.
+  for (const match of text.matchAll(/\p{L}{13,}/gu)) {
+    const word = match[0];
+    const lower = word.toLowerCase();
+    if (lower.endsWith('mente') || COMMON_LONG.has(lower)) continue;
+    add(word);
+  }
+
+  return [...found.values()].slice(0, limit);
+}
+
+/** Un concepto clave sirve para resaltar si no es un verbo suelto en infinitivo («Partir»). */
+function usefulConcept(concept: string): boolean {
+  const word = concept.trim();
+  if (word.length < 3) return false;
+  return word.includes(' ') || !/(ar|er|ir)$/i.test(word);
+}
+
+/**
+ * Términos que se resaltan en un apunte: primero el glosario de la IA, luego los conceptos
+ * clave y por último las palabras difíciles detectadas en el texto.
+ */
+export function highlightTerms(material: {
+  guide?: { glossary: { term: string }[] } | null;
+  keyConcepts?: string[] | null;
+  summary?: string | null;
+  sourceText?: string | null;
+}): string[] {
+  const terms: string[] = [];
+  const push = (term: string) => {
+    if (!terms.some((t) => sameTerm(t, term))) terms.push(term);
+  };
+  material.guide?.glossary.forEach((g) => push(g.term));
+  (material.keyConcepts ?? []).filter(usefulConcept).forEach(push);
+  difficultWords([material.summary, material.sourceText].filter(Boolean).join('\n')).forEach(push);
+  return terms;
+}

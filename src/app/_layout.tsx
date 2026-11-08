@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, LogBox, StyleSheet, Text, View } from 'react-native';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -16,6 +16,13 @@ import { db } from '@/db/client';
 export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
+
+// Aviso solo de desarrollo de Expo Router: al recargar en caliente (Fast Refresh) intenta quitar
+// las rutas de acceso, que ya no existen porque hay sesión. No afecta a la app ni aparece en
+// producción. Se silencia solo ese caso; cualquier otra acción sin atender se sigue mostrando.
+if (__DEV__) {
+  LogBox.ignoreLogs([/The action 'REMOVE_ROUTES' with payload \{"routeNames":\["login","login\/index"\]\}/]);
+}
 
 export default function RootLayout() {
   return (

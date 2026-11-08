@@ -41,7 +41,7 @@ export function CareersCard({ profile }: { profile: Profile }) {
         <View style={styles.flex}>
           <Text style={[styles.title, { color: theme.textPrimary }]}>Mis carreras</Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            Tu carrera principal le da color a la app y la IA explica tus apuntes con ejemplos de tu campo y al
+            Tu carrera principal le da color a la app y StudyIA explica tus apuntes con ejemplos de tu campo y al
             nivel de tu semestre.
           </Text>
         </View>
@@ -114,8 +114,8 @@ export function CareersCard({ profile }: { profile: Profile }) {
             <Text style={[styles.name, { color: theme.textPrimary }]}>Mezclar temáticas</Text>
             <Text style={[styles.faculty, { color: theme.textMuted }]}>
               {profile.mixCareers
-                ? 'La app combina los colores de tus carreras y la IA relaciona cada apunte con todas.'
-                : 'La app y la IA usan solo tu carrera principal. Toca la estrella para cambiarla.'}
+                ? 'La app combina los colores de tus carreras y StudyIA relaciona cada apunte con todas.'
+                : 'La app y StudyIA usan solo tu carrera principal. Toca la estrella para cambiarla.'}
             </Text>
           </View>
           <Switch

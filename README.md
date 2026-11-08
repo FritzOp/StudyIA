@@ -68,7 +68,7 @@ Si cambias `src/db/schema.ts`, genera la migración con `npm run db:generate`; s
 | Generar resumen, conceptos, flashcards y quiz con IA | `supabase/functions/study-ai/`, `src/services/ai/` |
 | Explicar temas difíciles (tutor) | Sección «Pregúntale a StudyIA» en `src/app/material/[id].tsx` |
 | Guía de estudio con IA: explicación sencilla, glosario, plan de estudio, otras formas de entenderlo, relación con la carrera, recomendaciones y «para saber más» | `src/components/StudyGuide.tsx`, `supabase/functions/study-ai/` |
-| Palabras difíciles en negrilla y subrayadas, y conceptos clave que se pueden tocar: abren su significado (de la guía o, si no está, de la frase del apunte que lo define) y su contexto | `src/components/GlossaryText.tsx`, `src/app/termino.tsx`, `src/lib/glossary.ts` |
+| Palabras difíciles en negrilla y subrayadas, y conceptos clave que se pueden tocar: abren qué significan en el contexto del tema, con un ejemplo. Se resaltan el glosario de la IA, los conceptos clave y las palabras difíciles detectadas (siglas, términos en inglés y tecnicismos), así que funciona también en apuntes generados sin IA. Si la palabra no está en el glosario, la IA la explica al tocarla y la respuesta se guarda; sin conexión se usa la frase del apunte que la define | `src/components/GlossaryText.tsx`, `src/app/termino.tsx`, `src/lib/glossary.ts` |
 | Varias carreras con una principal, mezcla de temáticas y semestre | Tarjeta «Mis carreras» en Perfil, `src/lib/careers.ts` |
 | Estudiar con repetición espaciada (Leitner) | `src/app/estudio/flashcards.tsx`, `src/lib/study.ts` |
 | Registrar resultados de los quizzes | `src/app/estudio/quiz.tsx` |
@@ -153,5 +153,5 @@ Además, 64 pruebas unitarias con Jest.
 - Sin conexión, el generador local no prepara guía; aparece al usar la IA sobre el apunte.
 - Los archivos Word no se admiten: solo PDF, texto e imágenes.
 - En Expo Go para Android no se puede crear el canal propio «Recordatorios de repaso». El aviso sale entonces por el canal por defecto y en el registro aparece una advertencia. En un development build el canal se crea normalmente.
-- En desarrollo, al guardar un archivo puede aparecer un aviso `REMOVE_ROUTES` por Fast Refresh. No apareció en arranques limpios ni al cerrar sesión.
+- En desarrollo, al recargar en caliente (Fast Refresh) Expo Router emite un aviso `REMOVE_ROUTES` sobre las rutas de acceso. No aparece en arranques limpios, al navegar ni al cambiar de carrera, y no existe en producción; se silencia solo ese mensaje en `src/app/_layout.tsx`.
 - La cuota de IA (40 solicitudes al día por usuario) es de la app; el plan gratuito de Gemini tiene sus propios límites, que se ven en AI Studio.

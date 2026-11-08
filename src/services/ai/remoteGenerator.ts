@@ -32,14 +32,14 @@ async function invoke<T>(body: Record<string, unknown>): Promise<T> {
     }
     const retryable = response.status === 404 || response.status === 429 || response.status >= 500;
     throw new RemoteAiError(
-      payload.error ?? 'El servicio de IA no está disponible en este momento.',
+      payload.error ?? 'StudyIA no está disponible en este momento.',
       retryable ? 'unavailable' : 'rejected'
     );
   }
   if (error instanceof FunctionsFetchError || error instanceof FunctionsRelayError) {
-    throw new RemoteAiError('No se pudo contactar el servicio de IA.', 'unavailable');
+    throw new RemoteAiError('No se pudo contactar a StudyIA.', 'unavailable');
   }
-  throw new RemoteAiError('Respuesta inesperada del servicio de IA.', 'unavailable');
+  throw new RemoteAiError('Respuesta inesperada de StudyIA.', 'unavailable');
 }
 
 export async function generateWithAi(input: {
@@ -63,6 +63,18 @@ export async function guideWithAi(input: {
 }): Promise<StudyGuide> {
   const { guide } = await invoke<{ guide: StudyGuide }>({ action: 'guide', ...input });
   return guide;
+}
+
+/** Qué significa un término dentro del tema del apunte, con un ejemplo. */
+export async function termWithAi(input: {
+  term: string;
+  title: string;
+  context: string;
+  careers: string[];
+  semester?: string;
+}): Promise<{ meaning: string; example: string }> {
+  const { meaning, example } = await invoke<{ meaning: string; example: string }>({ action: 'term', ...input });
+  return { meaning, example };
 }
 
 export async function explainWithAi(input: {

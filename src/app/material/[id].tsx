@@ -28,6 +28,7 @@ import {
   useSubject,
 } from '@/hooks/useStudyData';
 import { activeCareers } from '@/lib/careers';
+import { highlightTerms } from '@/lib/glossary';
 import { confirmDeleteMaterial } from '@/lib/confirmations';
 import { percentage } from '@/lib/study';
 import { generateGuide, processMaterial } from '@/services/ai/pipeline';
@@ -54,7 +55,7 @@ function MaterialContent({ material }: { material: Material }) {
   const attempts = allAttempts.filter((a) => a.materialId === material.id);
   const subjectName = subject?.name ?? 'Sin materia';
   // Los términos del glosario se resaltan en todo el apunte y se pueden tocar.
-  const terms = useMemo(() => material.guide?.glossary.map((g) => g.term) ?? [], [material.guide]);
+  const terms = useMemo(() => highlightTerms(material), [material]);
 
   const retry = () => {
     processMaterial(material.id, { canUseCloud, subjectName }).catch(() => undefined);
@@ -85,7 +86,7 @@ function MaterialContent({ material }: { material: Material }) {
               </View>
             </AnimatedPulse>
             <ShimmeringText
-              text={canUseCloud ? 'Analizando tu apunte con IA' : 'Analizando tu apunte'}
+              text={canUseCloud ? 'StudyIA está analizando tu apunte' : 'Analizando tu apunte'}
               style={[styles.processingTitle, { color: theme.primary }]}
             />
             <Text style={[styles.processingText, { color: theme.textMuted }]}>
@@ -126,12 +127,12 @@ function MaterialContent({ material }: { material: Material }) {
           title="Generado sin IA"
           message={
             isGuest
-              ? 'Se analizó en tu teléfono con frases de tu apunte. Crea una cuenta para usar la IA.'
+              ? 'Se analizó en tu teléfono con frases de tu apunte. Crea una cuenta para que StudyIA lo analice a fondo.'
               : canUseCloud
-                ? 'Se analizó en tu teléfono con frases de tu apunte. Usa la IA para mejorarlo y obtener la guía de estudio.'
-                : 'Se analizó en tu teléfono con frases de tu apunte. Al tener conexión podrás mejorarlo con IA y obtener la guía de estudio.'
+                ? 'Se analizó en tu teléfono con frases de tu apunte. Deja que StudyIA lo mejore y prepare tu guía de estudio.'
+                : 'Se analizó en tu teléfono con frases de tu apunte. Con conexión, StudyIA podrá mejorarlo y preparar tu guía de estudio.'
           }
-          action={canUseCloud ? <RetryLink label="Usar IA" onPress={retry} /> : undefined}
+          action={canUseCloud ? <RetryLink label="Mejorar con StudyIA" onPress={retry} /> : undefined}
         />
       ) : null}
 
@@ -203,12 +204,12 @@ function MaterialContent({ material }: { material: Material }) {
                 ))}
               </View>
               <Text style={[styles.hint, styles.conceptsHint, { color: theme.textMuted }]}>
-                Toca un concepto para ver qué significa y dónde aparece.
+                Toca un concepto para ver qué significa en este tema.
               </Text>
             </Accordion>
           ) : null}
 
-          <GuideSection material={material} subjectName={subjectName} onUseAi={retry} />
+          <GuideSection material={material} subjectName={subjectName} onUseAi={retry} terms={terms} />
 
           <Tutor material={material} />
         </>
@@ -282,10 +283,12 @@ function GuideSection({
   material,
   subjectName,
   onUseAi,
+  terms,
 }: {
   material: Material;
   subjectName: string;
   onUseAi: () => void;
+  terms: string[];
 }) {
   const { theme } = useTheme();
   const { canUseCloud } = useSync();
@@ -311,7 +314,7 @@ function GuideSection({
     <View style={styles.guide}>
       <SectionTitle
         title="Guía de estudio"
-        subtitle={material.guide ? 'Preparada por la IA para ti' : undefined}
+        subtitle={material.guide ? 'Preparada por StudyIA para ti' : undefined}
         right={
           material.guide && canUseCloud ? (
             <Pressable
@@ -329,7 +332,7 @@ function GuideSection({
       {error ? <Banner tone="error" icon="alert-circle-outline" title={error} /> : null}
 
       {material.guide ? (
-        <StudyGuideView guide={material.guide} careers={careers} materialId={material.id} />
+        <StudyGuideView guide={material.guide} careers={careers} materialId={material.id} terms={terms} />
       ) : (
         <Card style={styles.guideEmpty}>
           <MaterialCommunityIcons name="map-marker-path" size={30} color={theme.primary} />
@@ -339,7 +342,7 @@ function GuideSection({
           </Text>
           {canUseCloud ? (
             <RippleButton
-              label={isLocal ? 'Usar IA en este apunte' : 'Generar guía de estudio'}
+              label={isLocal ? 'Mejorar con StudyIA' : 'Generar guía de estudio'}
               icon="creation"
               variant="soft"
               loading={loading}
@@ -347,7 +350,7 @@ function GuideSection({
             />
           ) : (
             <Text style={[styles.guideEmptyHint, { color: theme.textMuted }]}>
-              La guía la prepara la IA en la nube: necesita conexión y una cuenta iniciada.
+              StudyIA prepara la guía en la nube: necesita conexión y una cuenta iniciada.
             </Text>
           )}
           {loading ? (
@@ -408,7 +411,7 @@ function Tutor({ material }: { material: Material }) {
         </View>
       ) : (
         <Text style={[styles.source, { color: theme.textMuted }]}>
-          El tutor usa IA en la nube: necesita conexión y una cuenta iniciada.
+          El tutor de StudyIA funciona en la nube: necesita conexión y una cuenta iniciada.
         </Text>
       )}
     </Accordion>

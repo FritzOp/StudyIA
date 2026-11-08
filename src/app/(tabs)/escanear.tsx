@@ -177,11 +177,11 @@ export default function ScanScreen() {
     : isGuest
       ? {
           title: 'Modo sin cuenta',
-          message: 'El texto se analiza sin IA en tu teléfono. Para leer fotos y PDF con IA, crea una cuenta.',
+          message: 'El texto se analiza sin IA en tu teléfono. Para que StudyIA lea fotos y PDF, crea una cuenta.',
         }
       : {
           title: isOnline ? 'Conectando con tu cuenta…' : 'Sin conexión',
-          message: 'Guarda tu apunte igual: las fotos y los PDF se procesarán con IA cuando vuelva la conexión.',
+          message: 'Guarda tu apunte igual: StudyIA procesará las fotos y los PDF cuando vuelva la conexión.',
         };
 
   if (subjects.length === 0) {

@@ -1,7 +1,9 @@
 import {
   containsTerm,
   definitionFromText,
+  difficultWords,
   findTermRanges,
+  highlightTerms,
   sameTerm,
   splitByTerms,
   termContexts,
@@ -52,5 +54,24 @@ describe('sameTerm y definitionFromText', () => {
       'Las redes neuronales son modelos inspirados en el cerebro.'
     );
     expect(definitionFromText(text, 'cerebro')).toBeNull();
+  });
+});
+
+describe('palabras para resaltar', () => {
+  it('detecta siglas, términos en inglés y tecnicismos largos', () => {
+    const words = difficultWords(
+      'La IA usa Machine Learning y un dataset. Las redes convolucionales procesan imágenes tradicionalmente.'
+    );
+    expect(words).toEqual(expect.arrayContaining(['IA', 'Machine Learning', 'dataset', 'convolucionales']));
+    expect(words).not.toContain('tradicionalmente');
+  });
+
+  it('combina glosario, conceptos útiles y palabras difíciles sin repetir', () => {
+    const terms = highlightTerms({
+      guide: { glossary: [{ term: 'Modelo' }] },
+      keyConcepts: ['Modelos', 'Partir', 'Redes neuronales'],
+      summary: 'El dataset alimenta el modelo.',
+    });
+    expect(terms).toEqual(['Modelo', 'Redes neuronales', 'dataset']);
   });
 });

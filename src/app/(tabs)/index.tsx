@@ -31,7 +31,7 @@ export default function HomeScreen() {
   const careers = activeCareers(profile);
 
   const engine = canUseCloud
-    ? { label: 'IA EN LA NUBE ACTIVA', color: '#34D399' }
+    ? { label: 'STUDYIA ACTIVA EN LA NUBE', color: '#34D399' }
     : isGuest
       ? { label: 'MODO LOCAL · SIN CUENTA', color: '#FBBF24' }
       : { label: isOnline ? 'RECONECTANDO…' : 'SIN CONEXIÓN · MODO LOCAL', color: '#FBBF24' };
