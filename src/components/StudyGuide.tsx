@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -39,10 +39,15 @@ export function StudyGuideView({
 
   return (
     <View style={styles.root}>
+      {guide.exercises && guide.exercises.length > 0 ? <Exercises items={guide.exercises} /> : null}
+
       {guide.explanation ? (
         <AnimatedEntrance>
           <Card style={styles.card}>
-            <Header icon="lightbulb-on-outline" title="Explicación sencilla" />
+            <Header
+              icon="lightbulb-on-outline"
+              title={guide.contentType === 'ejercicios' ? 'Cómo se resuelven' : 'Explicación sencilla'}
+            />
             {linked(guide.explanation, [styles.body, { color: theme.textSecondary }])}
           </Card>
         </AnimatedEntrance>
@@ -132,6 +137,62 @@ export function StudyGuideView({
   );
 }
 
+type Exercise = NonNullable<StudyGuide['exercises']>[number];
+
+/** Ejercicios del apunte con su resultado; al tocar uno se ve cómo se resuelve paso a paso. */
+function Exercises({ items }: { items: Exercise[] }) {
+  const { theme } = useTheme();
+  const [open, setOpen] = useState<number | null>(null);
+  return (
+    <Accordion title={`Ejercicios resueltos · ${items.length}`} icon="calculator-variant-outline" defaultOpen>
+      <View style={styles.exercises}>
+        <Text style={[styles.exerciseHint, { color: theme.textMuted }]}>
+          Toca un ejercicio para ver cómo se hace.
+        </Text>
+        {items.map((exercise, index) => {
+          const expanded = open === index;
+          return (
+            <Pressable
+              key={`${index}-${exercise.statement}`}
+              accessibilityRole="button"
+              accessibilityState={{ expanded }}
+              accessibilityLabel={`Ejercicio ${index + 1}: ${exercise.statement}, resultado ${exercise.answer}`}
+              onPress={() => setOpen(expanded ? null : index)}
+              style={[
+                styles.exercise,
+                { borderColor: expanded ? theme.primary : theme.border, backgroundColor: theme.surfaceElevated },
+              ]}
+            >
+              <View style={styles.exerciseRow}>
+                <Text style={[styles.exerciseNumber, { color: theme.textMuted }]}>{index + 1}.</Text>
+                <Text style={[styles.exerciseStatement, { color: theme.textPrimary }]}>
+                  {exercise.statement} ={' '}
+                  <Text style={[styles.exerciseAnswer, { color: theme.primary }]}>{exercise.answer}</Text>
+                </Text>
+                <MaterialCommunityIcons
+                  name={expanded ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color={theme.textMuted}
+                />
+              </View>
+              {expanded && exercise.steps.length > 0 ? (
+                <View style={styles.exerciseSteps}>
+                  <Text style={[styles.exerciseHow, { color: theme.textSecondary }]}>Cómo se hace</Text>
+                  {exercise.steps.map((step, i) => (
+                    <Text key={i} style={[styles.exerciseStep, { color: theme.textSecondary }]}>
+                      {i + 1}. {step}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+    </Accordion>
+  );
+}
+
 function Header({ icon, title, subtitle }: { icon: IconName; title: string; subtitle?: string }) {
   const { theme } = useTheme();
   return (
@@ -191,6 +252,16 @@ const styles = StyleSheet.create({
   stepBody: { flex: 1, paddingTop: 3 },
   stepText: { fontSize: 13.5, lineHeight: 20 },
   stepMinutes: { fontSize: 12, fontWeight: '700', paddingTop: 4 },
+  exercises: { gap: 8 },
+  exerciseHint: { fontSize: 12, fontStyle: 'italic' },
+  exercise: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  exerciseRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  exerciseNumber: { fontSize: 13, fontWeight: '700', minWidth: 22 },
+  exerciseStatement: { flex: 1, fontSize: 15.5, fontWeight: '700' },
+  exerciseAnswer: { fontWeight: '800' },
+  exerciseSteps: { gap: 4, paddingLeft: 30 },
+  exerciseHow: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },
+  exerciseStep: { fontSize: 13.5, lineHeight: 20 },
   bullet: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
   dot: { width: 6, height: 6, borderRadius: 3, marginTop: 8 },
   bulletBody: { flex: 1 },

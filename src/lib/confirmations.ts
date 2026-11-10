@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
 import { materialsRepo } from '@/db/repositories/materials';
 import { subjectsRepo } from '@/db/repositories/subjects';
+import { tutorRepo } from '@/db/repositories/tutor';
 import type { Material, Subject } from '@/db/schema';
 import { deleteLocalFile } from '@/services/files';
 
@@ -22,7 +23,7 @@ export function confirmDeleteSubject(subject: Subject, onDeleted?: () => void) {
 }
 
 export function confirmDeleteMaterial(material: Material, onDeleted?: () => void) {
-  Alert.alert(`¿Eliminar "${material.title}"?`, 'Se eliminan su resumen, flashcards y resultados.', [
+  Alert.alert(`¿Eliminar "${material.title}"?`, 'Se eliminan su resumen, flashcards, resultados y la conversación con StudyIA.', [
     { text: 'Cancelar', style: 'cancel' },
     {
       text: 'Eliminar',
@@ -30,6 +31,8 @@ export function confirmDeleteMaterial(material: Material, onDeleted?: () => void
       onPress: () => {
         materialsRepo.remove(material.id).then(() => {
           deleteLocalFile(material.fileUri);
+          // La conversación con el tutor y sus adjuntos son locales: se borran con el apunte.
+          tutorRepo.clear(material.userId, material.id).catch(() => undefined);
           onDeleted?.();
         });
       },

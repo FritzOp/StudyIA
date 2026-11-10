@@ -5,6 +5,10 @@
  * aportar conocimiento que no está en el apunte, pero siempre en secciones marcadas como tal.
  */
 export type StudyGuide = {
+  /** Qué es el apunte: teoría, una hoja de ejercicios o ambas (las guías anteriores no lo traen). */
+  contentType?: 'teoria' | 'ejercicios' | 'mixto';
+  /** Ejercicios del apunte resueltos, con los pasos para entender cómo se hacen. */
+  exercises?: { statement: string; answer: string; steps: string[] }[];
   /** El tema contado de forma sencilla, con un ejemplo. */
   explanation: string;
   /**

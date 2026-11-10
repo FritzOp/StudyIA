@@ -19,6 +19,16 @@ export async function persistFile(uri: string, id: string, extension: string): P
   return target.uri;
 }
 
+/** Guarda un adjunto del chat del tutor para que siga disponible en las próximas preguntas. */
+export async function persistAttachment(uri: string, id: string, extension: string): Promise<string> {
+  if (Platform.OS === 'web') return uri;
+  const dir = new Directory(Paths.document, 'tutor');
+  if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
+  const target = new File(dir, `${id}.${extension}`);
+  await new File(uri).copy(target);
+  return target.uri;
+}
+
 export function deleteLocalFile(uri: string | null): void {
   if (!uri || Platform.OS === 'web') return;
   const file = new File(uri);

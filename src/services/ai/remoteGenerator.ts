@@ -60,6 +60,8 @@ export async function guideWithAi(input: {
   careers: string[];
   semester?: string;
   context: string;
+  /** Archivo original (foto o PDF), para leer los ejercicios que el resumen no trae. */
+  file?: { base64: string; mediaType: string };
 }): Promise<StudyGuide> {
   const { guide } = await invoke<{ guide: StudyGuide }>({ action: 'guide', ...input });
   return guide;
@@ -83,6 +85,10 @@ export async function explainWithAi(input: {
   context: string;
   careers: string[];
   semester?: string;
+  /** Conversación previa con el tutor, de la más antigua a la más reciente. */
+  history?: { role: 'user' | 'assistant'; text: string }[];
+  /** Foto o PDF original del apunte y adjuntos del chat, para que la IA los vea. */
+  files?: { base64: string; mediaType: string; label: string }[];
 }): Promise<string> {
   const { answer } = await invoke<{ answer: string }>({ action: 'explain', ...input });
   return answer;

@@ -10,11 +10,10 @@ import {
   RippleButton,
   ShimmeringText,
   SlidingNumber,
-  TypingText,
 } from '@/components/motion';
 import { GlossaryText } from '@/components/GlossaryText';
 import { StudyGuideView } from '@/components/StudyGuide';
-import { Banner, Card, Field, Screen, SectionTitle, type IconName } from '@/components/ui';
+import { Banner, Card, Screen, SectionTitle, type IconName } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useSync } from '@/context/SyncContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -26,13 +25,13 @@ import {
   useProfile,
   useQuizQuestions,
   useSubject,
+  useTutorMessages,
 } from '@/hooks/useStudyData';
 import { activeCareers } from '@/lib/careers';
 import { highlightTerms } from '@/lib/glossary';
 import { confirmDeleteMaterial } from '@/lib/confirmations';
 import { percentage } from '@/lib/study';
 import { generateGuide, processMaterial } from '@/services/ai/pipeline';
-import { explainWithAi } from '@/services/ai/remoteGenerator';
 
 export default function MaterialScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -362,59 +361,47 @@ function GuideSection({
   );
 }
 
-/** "Explicación de temas difíciles": preguntas libres con el apunte como contexto. */
+/** Acceso al chat con StudyIA: muestra el último mensaje y abre la conversación completa. */
 function Tutor({ material }: { material: Material }) {
   const { theme } = useTheme();
   const { canUseCloud } = useSync();
-  const profile = useProfile();
-  const careers = activeCareers(profile);
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const ask = async () => {
-    if (!question.trim()) {
-      setError('Escribe tu pregunta.');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    setAnswer(null);
-    try {
-      const context = [material.summary, material.sourceText].filter(Boolean).join('\n\n');
-      setAnswer(await explainWithAi({ question: question.trim(), title: material.title, context, careers, semester: profile?.semester }));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo obtener la explicación.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const messages = useTutorMessages(material.id);
+  const last = messages[messages.length - 1];
 
   return (
-    <Accordion title="Pregúntale a StudyIA" icon="chat-question-outline">
-      {canUseCloud ? (
-        <View style={styles.tutor}>
-          <Field
-            label="¿Qué parte no entendiste?"
-            placeholder="Ej. Explícame la diferencia con un ejemplo"
-            value={question}
-            onChangeText={setQuestion}
-            multiline
-          />
-          <RippleButton label="Explicar" icon="creation" variant="soft" loading={loading} onPress={ask} />
-          {error ? <Banner tone="error" icon="alert-circle-outline" title={error} /> : null}
-          {loading ? (
-            <ShimmeringText text="Preparando la explicación" style={[styles.thinking, { color: theme.primary }]} />
-          ) : null}
-          {answer ? <TypingText key={answer} text={answer} style={[styles.answer, { color: theme.textSecondary }]} /> : null}
+    <Card style={styles.tutor}>
+      <View style={styles.tutorHeader}>
+        <View style={[styles.tutorIcon, { backgroundColor: theme.primaryLight }]}>
+          <MaterialCommunityIcons name="chat-processing-outline" size={22} color={theme.primary} />
         </View>
-      ) : (
-        <Text style={[styles.source, { color: theme.textMuted }]}>
-          El tutor de StudyIA funciona en la nube: necesita conexión y una cuenta iniciada.
+        <View style={styles.flex}>
+          <Text style={[styles.tutorTitle, { color: theme.textPrimary }]}>Pregúntale a StudyIA</Text>
+          <Text style={[styles.tutorSubtitle, { color: theme.textMuted }]}>
+            {material.fileUri
+              ? 'Conversa sobre este apunte: StudyIA ve tu archivo original y puedes adjuntar más.'
+              : 'Conversa sobre este apunte y adjunta fotos o PDF si lo necesitas.'}
+          </Text>
+        </View>
+      </View>
+      {last ? (
+        <Text style={[styles.tutorLast, { color: theme.textSecondary }]} numberOfLines={2}>
+          {last.role === 'assistant' ? 'StudyIA: ' : 'Tú: '}
+          {last.text}
         </Text>
-      )}
-    </Accordion>
+      ) : null}
+      <RippleButton
+        label={messages.length > 0 ? 'Seguir conversando' : 'Abrir chat'}
+        icon="message-text-outline"
+        variant="soft"
+        disabled={!canUseCloud && messages.length === 0}
+        onPress={() => router.push({ pathname: '/chat/[materialId]', params: { materialId: material.id } })}
+      />
+      {!canUseCloud ? (
+        <Text style={[styles.tutorSubtitle, { color: theme.textMuted }]}>
+          El chat funciona en la nube: necesita conexión y una cuenta iniciada.
+        </Text>
+      ) : null}
+    </Card>
   );
 }
 
@@ -439,7 +426,13 @@ const styles = StyleSheet.create({
   conceptText: { fontSize: 12.5, fontWeight: '700' },
   source: { fontSize: 13.5, lineHeight: 20 },
   photo: { width: '100%', height: 320, borderRadius: 12 },
-  tutor: { gap: 10 },
+  tutor: { gap: 12 },
+  flex: { flex: 1 },
+  tutorHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  tutorIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  tutorTitle: { fontSize: 15.5, fontWeight: '800' },
+  tutorSubtitle: { fontSize: 12.5, lineHeight: 18, marginTop: 2 },
+  tutorLast: { fontSize: 13.5, lineHeight: 20, fontStyle: 'italic' },
   guide: { gap: 12 },
   guideEmpty: { alignItems: 'center', gap: 10, paddingVertical: 20 },
   guideEmptyText: { fontSize: 13.5, lineHeight: 20, textAlign: 'center' },

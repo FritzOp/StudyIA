@@ -130,6 +130,27 @@ export const activities = sqliteTable(
   (t) => [index('activities_user_idx').on(t.userId)]
 );
 
+export type TutorRole = 'user' | 'assistant';
+export type TutorAttachment = { uri: string; mimeType: string; name: string };
+
+/**
+ * Conversación con el tutor de cada apunte. Es local (no se sincroniza): los adjuntos son
+ * archivos de este teléfono. Se envía como historial para que StudyIA recuerde lo hablado.
+ */
+export const tutorMessages = sqliteTable(
+  'tutor_messages',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(),
+    materialId: text('material_id').notNull(),
+    role: text('role').$type<TutorRole>().notNull(),
+    text: text('text').notNull().default(''),
+    attachments: text('attachments', { mode: 'json' }).$type<TutorAttachment[]>().notNull().default([]),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [index('tutor_messages_material_idx').on(t.userId, t.materialId)]
+);
+
 /** Perfil del estudiante. Un registro por usuario; id = userId. */
 export const profiles = sqliteTable('profiles', {
   id: text('id').primaryKey(),
@@ -154,3 +175,4 @@ export type QuizQuestion = typeof quizQuestions.$inferSelect;
 export type QuizAttempt = typeof quizAttempts.$inferSelect;
 export type Activity = typeof activities.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
+export type TutorMessage = typeof tutorMessages.$inferSelect;

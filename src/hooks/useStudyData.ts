@@ -5,6 +5,7 @@ import { materialsRepo } from '@/db/repositories/materials';
 import { profilesRepo } from '@/db/repositories/profiles';
 import { studyRepo } from '@/db/repositories/study';
 import { subjectsRepo } from '@/db/repositories/subjects';
+import { tutorRepo } from '@/db/repositories/tutor';
 import { overallStats, subjectStats } from '@/lib/study';
 
 // Las pantallas no importan Drizzle: leen de aquí. useLiveQuery vuelve a consultar
@@ -42,6 +43,12 @@ export function useQuizQuestions(materialId: string) {
 export function useProfile() {
   const userId = useUserId();
   return useLiveQuery(profilesRepo.query(userId), [userId]).data[0];
+}
+
+/** Conversación con el tutor de un apunte (local, en orden cronológico). */
+export function useTutorMessages(materialId: string) {
+  const userId = useUserId();
+  return useLiveQuery(tutorRepo.listQuery(userId, materialId), [userId, materialId]).data;
 }
 
 export function useMaterial(id: string) {

@@ -139,11 +139,16 @@ export function guideContext(material: Pick<Material, 'summary' | 'keyConcepts' 
  * cambiaron. No toca las flashcards ni el quiz, así que no se pierde el progreso del repaso.
  */
 export async function generateGuide(material: Material, subjectName: string): Promise<void> {
+  // Si la foto o el PDF siguen en el teléfono, la IA los lee: así ve los ejercicios completos.
+  const hasFile = !!material.fileUri && !!material.mimeType && fileExists(material.fileUri);
   const guide = await guideWithAi({
     title: material.title,
     subject: subjectName,
     ...(await studentOf(material.userId)),
     context: guideContext(material),
+    file: hasFile
+      ? { base64: await readAsBase64(material.fileUri as string), mediaType: material.mimeType as string }
+      : undefined,
   });
   await materialsRepo.saveGuide(material.id, guide);
 }
