@@ -106,7 +106,7 @@ export function planReminder(input: {
       date,
       dueCount,
       title: 'No pierdas tu racha',
-      body: `Llevas ${streak} ${streak === 1 ? 'día' : 'días'} seguidos. Haz un quiz o sube un apunte hoy.`,
+      body: `Llevas ${streak} ${streak === 1 ? 'día' : 'días'} de racha. Haz un quiz o sube un apunte hoy.`,
     };
   }
   return null;

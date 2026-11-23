@@ -29,7 +29,7 @@ import {
 } from '@/hooks/useStudyData';
 import { activeCareers } from '@/lib/careers';
 import { highlightTerms } from '@/lib/glossary';
-import { confirmDeleteMaterial } from '@/lib/confirmations';
+import { confirmDeleteMaterial, confirmImproveMaterial } from '@/lib/confirmations';
 import { percentage } from '@/lib/study';
 import { generateGuide, processMaterial } from '@/services/ai/pipeline';
 
@@ -125,13 +125,22 @@ function MaterialContent({ material }: { material: Material }) {
           icon="robot-off-outline"
           title="Generado sin IA"
           message={
-            isGuest
-              ? 'Se analizó en tu teléfono con frases de tu apunte. Crea una cuenta para que StudyIA lo analice a fondo.'
-              : canUseCloud
-                ? 'Se analizó en tu teléfono con frases de tu apunte. Deja que StudyIA lo mejore y prepare tu guía de estudio.'
-                : 'Se analizó en tu teléfono con frases de tu apunte. Con conexión, StudyIA podrá mejorarlo y preparar tu guía de estudio.'
+            material.errorMessage
+              ? `No se pudo mejorar: ${material.errorMessage} Tu material y tu progreso siguen igual.`
+              : isGuest
+                ? 'Se analizó en tu teléfono con frases de tu apunte. Crea una cuenta para que StudyIA lo analice a fondo.'
+                : canUseCloud
+                  ? 'Se analizó en tu teléfono con frases de tu apunte. Deja que StudyIA lo mejore y prepare tu guía de estudio.'
+                  : 'Se analizó en tu teléfono con frases de tu apunte. Con conexión, StudyIA podrá mejorarlo y preparar tu guía de estudio.'
           }
-          action={canUseCloud ? <RetryLink label="Mejorar con StudyIA" onPress={retry} /> : undefined}
+          action={
+            canUseCloud ? (
+              <RetryLink
+                label="Mejorar con StudyIA"
+                onPress={() => confirmImproveMaterial(cards.some((c) => c.reviewCount > 0), retry)}
+              />
+            ) : undefined
+          }
         />
       ) : null}
 

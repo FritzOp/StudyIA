@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -9,8 +9,8 @@ import { useUserId } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { studyRepo } from '@/db/repositories/study';
 import type { Flashcard } from '@/db/schema';
-import { useFlashcards, useMaterials, useSubjects } from '@/hooks/useStudyData';
-import { isDue } from '@/lib/study';
+import { useLoadedFlashcards, useMaterials, useSubjects } from '@/hooks/useStudyData';
+import { countLabel, isDue, shuffle } from '@/lib/study';
 
 const haptic = (style: Haptics.ImpactFeedbackStyle) => {
   if (Platform.OS !== 'web') Haptics.impactAsync(style).catch(() => undefined);
@@ -22,28 +22,30 @@ const haptic = (style: Haptics.ImpactFeedbackStyle) => {
  */
 export default function FlashcardsScreen() {
   const params = useLocalSearchParams<{ materialId?: string; subjectId?: string; due?: string }>();
-  const allCards = useFlashcards();
+  const { cards: allCards, loaded } = useLoadedFlashcards();
   const [session, setSession] = useState<Flashcard[] | null>(null);
 
   // La sesión se fija al empezar; si no, cada repaso cambiaría la lista mientras se estudia.
   if (!session && allCards.length > 0) {
-    setSession(
-      allCards.filter((card) => {
-        if (params.materialId) return card.materialId === params.materialId;
-        if (params.subjectId) return card.subjectId === params.subjectId;
-        if (params.due) return isDue(card);
-        return true;
-      })
-    );
+    const selected = allCards.filter((card) => {
+      if (params.materialId) return card.materialId === params.materialId;
+      if (params.subjectId) return card.subjectId === params.subjectId;
+      if (params.due) return isDue(card);
+      return true;
+    });
+    if (selected.length > 0) setSession(selected);
   }
 
-  if (!session || session.length === 0) {
+  if (!loaded) return <Screen title="Flashcards" back>{null}</Screen>;
+
+  if (!session) {
+    const upToDate = !!params.due && allCards.length > 0;
     return (
       <Screen title="Flashcards" back>
         <EmptyState
           icon="cards-outline"
-          title={params.due ? 'Nada por repasar hoy' : 'Sin flashcards'}
-          message={params.due ? '¡Vas al día! Vuelve mañana.' : 'Procesa un apunte para generar tarjetas de estudio.'}
+          title={upToDate ? 'Nada por repasar hoy' : 'Sin flashcards'}
+          message={upToDate ? '¡Vas al día! Vuelve mañana.' : 'Procesa un apunte para generar tarjetas de estudio.'}
         />
       </Screen>
     );
@@ -57,22 +59,57 @@ function Session({ cards, materialId }: { cards: Flashcard[]; materialId?: strin
   const userId = useUserId();
   const materials = useMaterials();
   const subjects = useSubjects();
-  const [queue, setQueue] = useState(cards);
+  const [queue, setQueue] = useState(() => shuffle(cards));
   const [flipped, setFlipped] = useState(false);
   const [known, setKnown] = useState(0);
   const [retried, setRetried] = useState<Set<string>>(new Set());
   const [finished, setFinished] = useState(false);
+  // Cada respuesta es un paso. El ref evita que un doble toque responda dos veces el mismo paso.
+  const [step, setStep] = useState(0);
+  const answeredStep = useRef(-1);
+  const activityId = useRef<string | null>(null);
 
   const current = queue[0];
   const reviewed = cards.length - queue.filter((c) => !retried.has(c.id)).length;
 
+  /** Se guarda desde la primera respuesta: si se sale a la mitad, el repaso cuenta para la racha. */
+  const saveActivity = async (recalled: number, answered: number) => {
+    const detail = `${recalled} de ${countLabel(answered, 'flashcard recordada', 'flashcards recordadas')}.`;
+    if (activityId.current) {
+      await studyRepo.updateActivityDetail(activityId.current, detail);
+      return;
+    }
+    const material = materialId ? materials.find((m) => m.id === materialId) : undefined;
+    const subjectIds = new Set(cards.map((c) => c.subjectId));
+    const subject = subjects.find((s) => s.id === cards[0].subjectId);
+    activityId.current = await studyRepo.logActivity({
+      userId,
+      type: 'flashcards',
+      title: material?.title ?? 'Sesión de repaso',
+      detail,
+      subjectName: subjectIds.size > 1 ? 'Varias materias' : (subject?.name ?? ''),
+      materialId: materialId ?? null,
+    });
+  };
+
   const answer = async (knew: boolean) => {
-    if (!current) return;
+    if (!current || answeredStep.current >= step) return;
+    answeredStep.current = step;
     haptic(knew ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium);
     // Solo la primera respuesta cuenta para el sistema Leitner.
     const firstTime = !retried.has(current.id);
-    if (firstTime) await studyRepo.reviewFlashcard(current, knew);
-    if (firstTime && knew) setKnown((n) => n + 1);
+    const recalled = known + (firstTime && knew ? 1 : 0);
+    if (firstTime) {
+      try {
+        await studyRepo.reviewFlashcard(current, knew);
+        await saveActivity(recalled, reviewed + 1);
+      } catch {
+        answeredStep.current = step - 1;
+        Alert.alert('No se pudo guardar', 'Tu respuesta no quedó guardada. Inténtalo de nuevo.');
+        return;
+      }
+    }
+    setKnown(recalled);
 
     // La que no se sabía se repite una vez al final de la sesión.
     const shouldRetry = !knew && firstTime;
@@ -82,20 +119,8 @@ function Session({ cards, materialId }: { cards: Flashcard[]; materialId?: strin
 
     setFlipped(false);
     setQueue(nextQueue);
-
-    if (nextQueue.length === 0) {
-      setFinished(true);
-      const material = materials.find((m) => m.id === (materialId ?? cards[0].materialId));
-      const subject = subjects.find((s) => s.id === cards[0].subjectId);
-      await studyRepo.logActivity({
-        userId,
-        type: 'flashcards',
-        title: materialId && material ? material.title : 'Sesión de repaso',
-        detail: `${known + (firstTime && knew ? 1 : 0)} de ${cards.length} flashcards recordadas.`,
-        subjectName: subject?.name ?? '',
-        materialId: materialId ?? null,
-      });
-    }
+    setStep(step + 1);
+    if (nextQueue.length === 0) setFinished(true);
   };
 
   if (finished) {
@@ -108,7 +133,9 @@ function Session({ cards, materialId }: { cards: Flashcard[]; materialId?: strin
             <Text style={[styles.resultTitle, { color: theme.textPrimary }]}>¡Repaso terminado!</Text>
             <View style={styles.resultScore}>
               <SlidingNumber value={known} fontSize={32} color={theme.primary} />
-              <Text style={[styles.resultOf, { color: theme.textSecondary }]}> de {cards.length} recordadas</Text>
+              <Text style={[styles.resultOf, { color: theme.textSecondary }]}>
+                {` de ${countLabel(cards.length, 'recordada')}`}
+              </Text>
             </View>
             <Text style={[styles.resultText, { color: theme.textMuted }]}>
               Las que recordaste volverán más adelante; las demás, mañana.

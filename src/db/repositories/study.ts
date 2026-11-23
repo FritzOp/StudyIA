@@ -46,7 +46,7 @@ export const studyRepo = {
 
   async reviewFlashcard(card: Flashcard, knew: boolean): Promise<void> {
     const now = new Date();
-    const { box, dueAt } = nextReview(card.box, knew, now);
+    const { box, dueAt } = nextReview(card, knew, now);
     await db
       .update(flashcards)
       .set({ box, dueAt, reviewCount: card.reviewCount + 1, lastReviewedAt: now, updatedAt: now })
@@ -77,14 +77,21 @@ export const studyRepo = {
     detail: string;
     subjectName: string;
     materialId?: string | null;
-  }): Promise<void> {
+  }): Promise<string> {
     const now = new Date();
+    const id = Crypto.randomUUID();
     await db.insert(activities).values({
       ...input,
       materialId: input.materialId ?? null,
-      id: Crypto.randomUUID(),
+      id,
       createdAt: now,
       updatedAt: now,
     });
+    return id;
+  },
+
+  /** Actualiza el detalle de una actividad en curso (por ejemplo, un repaso a medias). */
+  async updateActivityDetail(id: string, detail: string): Promise<void> {
+    await db.update(activities).set({ detail, updatedAt: new Date() }).where(eq(activities.id, id));
   },
 };

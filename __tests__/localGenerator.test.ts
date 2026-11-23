@@ -62,6 +62,13 @@ describe('generateLocally', () => {
     }
   });
 
+  it('no repite en «Completa» el término de una frase que ya tiene su «¿Qué es?»', () => {
+    const cards = pack.flashcards.filter((f) => f.question.startsWith('Completa'));
+    expect(cards.some((f) => /Las _____ son modelos inspirados/.test(f.question))).toBe(false);
+    expect(cards.some((f) => /La _____ es un área/.test(f.question))).toBe(false);
+    expect(cards.length).toBeGreaterThan(0);
+  });
+
   it('es determinista: el mismo apunte da el mismo material', () => {
     expect(generateLocally(NOTE)).toEqual(pack);
   });

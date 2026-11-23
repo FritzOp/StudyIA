@@ -26,6 +26,13 @@ export function useFlashcards() {
   return useLiveQuery(studyRepo.flashcardsQuery(userId), [userId]).data;
 }
 
+/** Igual, pero distingue «todavía no se ha consultado» de «no hay tarjetas». */
+export function useLoadedFlashcards() {
+  const userId = useUserId();
+  const { data, updatedAt } = useLiveQuery(studyRepo.flashcardsQuery(userId), [userId]);
+  return { cards: data, loaded: updatedAt !== undefined };
+}
+
 export function useAttempts() {
   const userId = useUserId();
   return useLiveQuery(studyRepo.attemptsQuery(userId), [userId]).data;

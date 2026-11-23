@@ -5,8 +5,11 @@ import {
   initialsOf,
   isPending,
   MASTERED_BOX,
+  countLabel,
+  isDue,
   nextReview,
   percentage,
+  shuffle,
   timeAgo,
 } from '../src/lib/study';
 
@@ -30,17 +33,60 @@ describe('nextReview (Leitner)', () => {
   const now = new Date('2026-11-04T12:00:00');
 
   it('sube de caja y espacia el repaso si la sabía', () => {
-    const result = nextReview(2, true, now);
+    const result = nextReview({ box: 2, dueAt: now }, true, now);
     expect(result.box).toBe(3);
     expect(result.dueAt.getTime()).toBe(now.getTime() + 7 * DAY);
   });
   it('vuelve a la caja 1 y se repasa mañana si no la sabía', () => {
-    const result = nextReview(4, false, now);
+    const result = nextReview({ box: 4, dueAt: now }, false, now);
     expect(result.box).toBe(1);
     expect(result.dueAt.getTime()).toBe(now.getTime() + DAY);
   });
   it('no pasa de la caja máxima', () => {
-    expect(nextReview(5, true, now).box).toBe(5);
+    expect(nextReview({ box: 5, dueAt: now }, true, now).box).toBe(5);
+  });
+  it('repetirla el mismo día no la sube: cuatro aciertos seguidos cuentan como uno', () => {
+    let card = { box: 1, dueAt: now };
+    for (let i = 0; i < 4; i++) card = nextReview(card, true, now);
+    expect(card.box).toBe(2);
+    expect(card.dueAt.getTime()).toBe(now.getTime() + 3 * DAY);
+  });
+  it('si la falla en práctica libre, sí vuelve a la caja 1', () => {
+    const result = nextReview({ box: 3, dueAt: new Date(now.getTime() + 5 * DAY) }, false, now);
+    expect(result).toEqual({ box: 1, dueAt: new Date(now.getTime() + DAY) });
+  });
+});
+
+describe('isDue', () => {
+  const studied = new Date('2026-11-04T20:00:00');
+
+  it('cuenta el día y no la hora: lo estudiado a las 8 p. m. toca desde la mañana siguiente', () => {
+    const card = nextReview({ box: 3, dueAt: studied }, false, studied);
+    expect(isDue(card, new Date('2026-11-04T23:59:00'))).toBe(false);
+    expect(isDue(card, new Date('2026-11-05T07:00:00'))).toBe(true);
+  });
+  it('sigue pendiente si se pasó el día', () => {
+    expect(isDue({ dueAt: studied }, new Date('2026-11-09T08:00:00'))).toBe(true);
+  });
+});
+
+describe('shuffle', () => {
+  it('conserva todas las tarjetas y no modifica la lista original', () => {
+    const items = [1, 2, 3, 4, 5, 6];
+    const result = shuffle(items);
+    expect([...result].sort()).toEqual(items);
+    expect(items).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+  it('cambia el orden según el azar', () => {
+    expect(shuffle([1, 2, 3], () => 0)).toEqual([2, 3, 1]);
+  });
+});
+
+describe('countLabel', () => {
+  it('usa singular solo con 1', () => {
+    expect(countLabel(1, 'flashcard')).toBe('1 flashcard');
+    expect(countLabel(0, 'flashcard')).toBe('0 flashcards');
+    expect(countLabel(8, 'flashcard')).toBe('8 flashcards');
   });
 });
 

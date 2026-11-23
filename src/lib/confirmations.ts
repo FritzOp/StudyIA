@@ -22,6 +22,22 @@ export function confirmDeleteSubject(subject: Subject, onDeleted?: () => void) {
   );
 }
 
+/** Mejorar un apunte reemplaza sus tarjetas: se avisa si ya había progreso de repaso. */
+export function confirmImproveMaterial(hasProgress: boolean, onConfirm: () => void) {
+  if (!hasProgress) {
+    onConfirm();
+    return;
+  }
+  Alert.alert(
+    '¿Mejorar con StudyIA?',
+    'Se crearán flashcards y preguntas nuevas. El progreso de repaso de las actuales se pierde; tus resultados de quiz se conservan.',
+    [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Mejorar', onPress: onConfirm },
+    ]
+  );
+}
+
 export function confirmDeleteMaterial(material: Material, onDeleted?: () => void) {
   Alert.alert(`¿Eliminar "${material.title}"?`, 'Se eliminan su resumen, flashcards, resultados y la conversación con StudyIA.', [
     { text: 'Cancelar', style: 'cancel' },

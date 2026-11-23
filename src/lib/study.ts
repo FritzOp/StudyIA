@@ -14,14 +14,36 @@ export const BOX_INTERVAL_DAYS = [0, 1, 3, 7, 14, 30];
 export const MAX_BOX = 5;
 export const MASTERED_BOX = 4;
 
-/** Sistema Leitner: si la sabía sube de caja; si no, vuelve a la caja 1 y se repasa mañana. */
-export function nextReview(box: number, knew: boolean, now: Date = new Date()) {
-  const nextBox = knew ? Math.min(box + 1, MAX_BOX) : 1;
-  return { box: nextBox, dueAt: new Date(now.getTime() + BOX_INTERVAL_DAYS[nextBox] * DAY_MS) };
+/**
+ * Sistema Leitner: si la sabía sube de caja; si no, vuelve a la caja 1 y se repasa mañana.
+ * Acertar una tarjeta que aún no tocaba es práctica libre: no la sube, porque repetirla varias
+ * veces seguidas no demuestra que se recuerde a largo plazo.
+ */
+export function nextReview(card: Pick<Flashcard, 'box' | 'dueAt'>, knew: boolean, now: Date = new Date()) {
+  if (knew && !isDue(card, now)) return { box: card.box, dueAt: card.dueAt };
+  const box = knew ? Math.min(card.box + 1, MAX_BOX) : 1;
+  return { box, dueAt: new Date(now.getTime() + BOX_INTERVAL_DAYS[box] * DAY_MS) };
 }
 
+/** Toca repasarla si su día ya llegó: cuenta el día, no la hora a la que se estudió. */
 export function isDue(card: Pick<Flashcard, 'dueAt'>, now: Date = new Date()): boolean {
-  return card.dueAt.getTime() <= now.getTime();
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return card.dueAt.getTime() < endOfToday.getTime();
+}
+
+/** Copia en orden aleatorio (Fisher-Yates), para no memorizar las tarjetas por su posición. */
+export function shuffle<T>(items: T[], random: () => number = Math.random): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/** «1 flashcard», «3 flashcards». */
+export function countLabel(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 export function dayKey(date: Date): string {

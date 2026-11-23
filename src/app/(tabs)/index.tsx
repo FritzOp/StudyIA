@@ -12,7 +12,7 @@ import { useSync } from '@/context/SyncContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useProfile, useStudyOverview } from '@/hooks/useStudyData';
 import { activeCareers, careerInfo } from '@/lib/careers';
-import { initialsOf } from '@/lib/study';
+import { countLabel, initialsOf } from '@/lib/study';
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -60,7 +60,7 @@ export default function HomeScreen() {
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${stats.due} flashcards por repasar`}
+          accessibilityLabel={`${countLabel(stats.due, 'flashcard')} por repasar`}
           onPress={() => router.navigate('/practica')}
           style={[styles.bell, { backgroundColor: theme.primaryLight }]}
         >

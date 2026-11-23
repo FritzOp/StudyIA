@@ -3,6 +3,7 @@ import { profilesRepo } from '@/db/repositories/profiles';
 import { studyRepo } from '@/db/repositories/study';
 import type { Material } from '@/db/schema';
 import { activeCareers } from '@/lib/careers';
+import { countLabel } from '@/lib/study';
 import { fileExists, readAsBase64 } from '@/services/files';
 import { generateLocally, TextTooShortError } from './localGenerator';
 import { generateWithAi, guideWithAi, RemoteAiError } from './remoteGenerator';
@@ -49,7 +50,7 @@ async function finish(material: Material, pack: StudyPack, generator: 'ai' | 'lo
     userId: material.userId,
     type: 'material',
     title: material.title,
-    detail: `Resumen, ${pack.flashcards.length} flashcards y ${pack.quiz.length} preguntas${
+    detail: `Resumen, ${countLabel(pack.flashcards.length, 'flashcard')} y ${countLabel(pack.quiz.length, 'pregunta')}${
       generator === 'local' ? ' (sin IA)' : ''
     }.`,
     subjectName: subject,
@@ -85,6 +86,12 @@ export async function processMaterial(materialId: string, ctx: AiContext): Promi
         await finish(material, pack, 'ai', ctx.subjectName);
         return;
       } catch (error) {
+        // Si ya tenía material, se conserva: regenerarlo borraría el progreso de las flashcards.
+        if (material.generator) {
+          const reason = error instanceof Error ? error.message : 'Servicio no disponible.';
+          await materialsRepo.setStatus(materialId, 'ready', reason);
+          return;
+        }
         const isFinal =
           error instanceof MissingFileError ||
           (error instanceof RemoteAiError && error.kind === 'rejected');
@@ -99,6 +106,11 @@ export async function processMaterial(materialId: string, ctx: AiContext): Promi
         }
         // Con texto no hace falta esperar: se sigue con el generador local.
       }
+    }
+
+    if (material.generator) {
+      await materialsRepo.setStatus(materialId, 'ready');
+      return;
     }
 
     if (hasText) {

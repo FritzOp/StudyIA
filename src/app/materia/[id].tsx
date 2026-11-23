@@ -8,6 +8,7 @@ import { asIcon, Card, EmptyState, Screen, SectionTitle } from '@/components/ui'
 import { useTheme } from '@/context/ThemeContext';
 import { useStudyOverview } from '@/hooks/useStudyData';
 import { confirmDeleteMaterial, confirmDeleteSubject } from '@/lib/confirmations';
+import { countLabel } from '@/lib/study';
 
 export default function SubjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,7 +46,7 @@ export default function SubjectDetailScreen() {
             <SlidingNumber value={stats.progress} suffix="%" fontSize={26} color={theme.textPrimary} />
             <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>de comprensión</Text>
             <Text style={[styles.summaryMeta, { color: theme.textMuted }]}>
-              {stats.cards} flashcards · {stats.attempts} {stats.attempts === 1 ? 'quiz' : 'quizzes'}
+              {countLabel(stats.cards, 'flashcard')} · {stats.attempts} {stats.attempts === 1 ? 'quiz' : 'quizzes'}
             </Text>
           </View>
         </Card>

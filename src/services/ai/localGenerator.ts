@@ -134,9 +134,12 @@ export function generateLocally(text: string): StudyPack {
     answer: capitalize(d.meaning) + '.',
   }));
   const ranked = [...scored].sort((a, b) => b.score - a.score);
+  // «¿Qué es X?» y «Completa: _____ es...» preguntan lo mismo: en una frase que ya definió un
+  // término se oculta otro concepto o se descarta.
+  const definedIn = new Map(definitions.slice(0, 8).map((d) => [d.sentence, d.term.toLowerCase()]));
   for (const { sentence } of ranked) {
     if (flashcards.length >= 8) break;
-    const concept = concepts.find((c) => blankOut(sentence, c));
+    const concept = concepts.find((c) => c.toLowerCase() !== definedIn.get(sentence) && blankOut(sentence, c));
     if (!concept) continue;
     const question = `Completa la idea: ${blankOut(sentence, concept)}`;
     if (!flashcards.some((f) => f.question === question)) {

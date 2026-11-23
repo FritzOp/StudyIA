@@ -9,7 +9,7 @@ import { Card, EmptyState, Screen, SectionTitle } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useStudyOverview } from '@/hooks/useStudyData';
 import { quizTrend, weeklyActivity } from '@/lib/progress';
-import { percentage, timeAgo } from '@/lib/study';
+import { countLabel, percentage, timeAgo } from '@/lib/study';
 
 export default function PracticeScreen() {
   const { theme } = useTheme();
@@ -34,7 +34,7 @@ export default function PracticeScreen() {
           <View style={styles.flex}>
             <Text style={[styles.overviewTitle, { color: theme.textPrimary }]}>Comprensión general</Text>
             <Text style={[styles.overviewText, { color: theme.textSecondary }]}>
-              {stats.mastered} de {stats.cards} flashcards dominadas y {stats.average}% de promedio en quizzes.
+              {stats.mastered} de {countLabel(stats.cards, 'flashcard dominada', 'flashcards dominadas')} y {stats.average}% de promedio en quizzes.
             </Text>
           </View>
         </Card>
@@ -50,7 +50,7 @@ export default function PracticeScreen() {
 
       {stats.cards > 0 ? (
         <RippleButton
-          label={stats.due > 0 ? `Repasar ${stats.due} flashcards` : 'Repasar todas las flashcards'}
+          label={stats.due > 0 ? `Repasar ${countLabel(stats.due, 'flashcard')}` : 'Repasar todas las flashcards'}
           icon="cards-playing-outline"
           onPress={() =>
             router.push({ pathname: '/estudio/flashcards', params: stats.due > 0 ? { due: '1' } : {} })
